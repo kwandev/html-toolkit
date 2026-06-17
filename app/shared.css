@@ -21,7 +21,7 @@
   /* shape & scale */
   --radius: 10px;
   --radius-sm: 7px;
-  --maxw: 1080px;
+  --maxw: 1280px;
   --pad: clamp(16px, 4vw, 32px);
 }
 
