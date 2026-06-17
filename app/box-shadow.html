@@ -298,9 +298,35 @@
         $("lb").textContent = els.b.value + "px";
         $("ls").textContent = els.s.value + "px";
         $("lo").textContent = els.o.value + "%";
+
+        writeUrl();
       }
 
       Object.values(els).forEach((el) => el.addEventListener("input", update));
+
+      /* ---------- URL state (#x=..&y=..&b=..&s=..&c=..&o=..&i=1) ---------- */
+      function writeUrl() {
+        const p = new URLSearchParams({
+          x: els.x.value,
+          y: els.y.value,
+          b: els.b.value,
+          s: els.s.value,
+          c: els.c.value.slice(1), // drop leading '#'
+          o: els.o.value,
+        });
+        if (els.inset.checked) p.set("i", "1");
+        history.replaceState(null, "", "#" + p.toString());
+      }
+      function readUrl() {
+        const p = new URLSearchParams(location.hash.slice(1));
+        for (const k of ["x", "y", "b", "s", "o"]) {
+          const v = p.get(k);
+          if (v && !Number.isNaN(+v)) els[k].value = v; // range clamps out-of-bounds
+        }
+        const c = p.get("c");
+        if (c && /^[0-9a-fA-F]{6}$/.test(c)) els.c.value = "#" + c;
+        els.inset.checked = p.get("i") === "1";
+      }
 
       async function copyText(text) {
         try {
@@ -333,6 +359,12 @@
         setTimeout(() => (btn.textContent = "Copy"), 1200);
       });
 
+      window.addEventListener("hashchange", () => {
+        readUrl();
+        update();
+      });
+
+      readUrl();
       update();
     </script>
   </body>
