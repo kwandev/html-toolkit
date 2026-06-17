@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Color &amp; Contrast — toolkit</title>
+    <meta
+      name="description"
+      content="Convert hex / rgb / hsl / oklch and check WCAG contrast with a live preview."
+    />
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1080px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      /* tool-specific semantic state colors (kept out of the shared design-system block) */
+      :root {
+        --ok: #2e9e44;
+        --bad: #e5484d;
+        --warn: #e5a000;
+        --warn-ink: #b26a00;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ok: #3fb755;
+          --bad: #ff6369;
+          --warn: #f2b34b;
+          --warn-ink: #f5c570;
+        }
+      }
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: var(--maxw);
+        display: grid;
+        gap: 20px;
+      }
+
+      /* --- two color cards --- */
+      .colors {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 720px) {
+        .colors {
+          grid-template-columns: 1fr;
+        }
+      }
+      .color-card {
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+      .color-card h2 {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--muted);
+      }
+
+      /* checkerboard so alpha is visible; the solid color layer is added via JS */
+      .swatch {
+        height: 84px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background-color: var(--surface);
+        background-size:
+          auto,
+          12px 12px;
+        cursor: pointer;
+      }
+      .swatch:hover {
+        border-color: var(--accent);
+      }
+
+      .input-row {
+        display: flex;
+        gap: 8px;
+      }
+      .input-row input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        font: inherit;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        padding: 0.5em 0.7em;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .input-row input[type="text"].invalid {
+        border-color: var(--bad);
+      }
+      .input-row input[type="color"] {
+        width: 44px;
+        height: auto;
+        flex: none;
+      }
+      .input-row .eye {
+        flex: none;
+        padding: 0.5em 0.7em;
+      }
+
+      .readouts {
+        display: grid;
+        gap: 8px;
+      }
+      .readout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .readout .fmt {
+        flex: none;
+        width: 3.4em;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      .readout code {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 10px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .readout .copy {
+        flex: none;
+        padding: 0.4em 0.7em;
+        font-size: 0.76rem;
+      }
+
+      .swap-row {
+        display: flex;
+        justify-content: center;
+        margin: -6px 0;
+
+        span {
+          transform: rotate(90deg);
+        }
+      }
+
+      /* --- contrast panel --- */
+      .contrast {
+        display: grid;
+        gap: 22px;
+      }
+      .ratio {
+        text-align: center;
+        display: grid;
+        gap: 2px;
+      }
+      .ratio .num {
+        font-size: clamp(2.4rem, 9vw, 3.6rem);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .ratio .lab {
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+      .badges {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+      @media (max-width: 640px) {
+        .badges {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .badge {
+        display: grid;
+        gap: 3px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface-2);
+      }
+      .badge b {
+        font-size: 0.9rem;
+      }
+      .badge span {
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        color: var(--muted);
+      }
+      .badge .mark {
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+      .badge.pass {
+        border-color: color-mix(in oklab, var(--ok) 55%, var(--line));
+      }
+      .badge.pass .mark {
+        color: var(--ok);
+      }
+      .badge.fail {
+        opacity: 0.66;
+      }
+      .badge.fail .mark {
+        color: var(--bad);
+      }
+
+      .suggest {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 14px;
+        border: 1px solid color-mix(in oklab, var(--warn) 45%, var(--line));
+        border-left: 3px solid var(--warn);
+        border-radius: var(--radius-sm);
+        background: color-mix(in oklab, var(--warn) 8%, var(--surface-2));
+      }
+      .suggest.show {
+        display: flex;
+      }
+      .suggest .warn-ico {
+        flex: none;
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+      .suggest .sw {
+        width: 34px;
+        height: 34px;
+        flex: none;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+      }
+      .suggest .txt {
+        flex: 1;
+        min-width: 12ch;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .suggest .txt b {
+        color: var(--ink);
+      }
+      .warn-label {
+        color: var(--warn-ink);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.74rem;
+      }
+
+      /* "example" caption above the live preview */
+      .ex-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .ex-label .tag-ex {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--accent-2);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.66rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .note a {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .preview {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 22px 24px;
+        background-color: var(--surface);
+        background-size:
+          auto,
+          12px 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .preview .lg {
+        font-size: 1.7rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .preview .sm {
+        font-size: 0.95rem;
+      }
+      .note {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="color-contrast">
+      <div class="wrap">
+        <!-- both color cards are generated from a template in the script below -->
+        <div class="colors" id="colors"></div>
+
+        <div class="swap-row">
+          <button class="btn" id="swap"><span>⇅</span> Swap fg / bg</button>
+        </div>
+
+        <div class="contrast panel">
+          <div class="ratio">
+            <div class="num" id="ratio-num">—</div>
+            <div class="lab">contrast ratio · max 21 : 1</div>
+          </div>
+
+          <div class="badges">
+            <div class="badge" id="b-naa">
+              <b>AA</b><span>Normal · ≥ 4.5</span><span class="mark"></span>
+            </div>
+            <div class="badge" id="b-naaa">
+              <b>AAA</b><span>Normal · ≥ 7</span><span class="mark"></span>
+            </div>
+            <div class="badge" id="b-laa">
+              <b>AA</b><span>Large · ≥ 3</span><span class="mark"></span>
+            </div>
+            <div class="badge" id="b-laaa">
+              <b>AAA</b><span>Large · ≥ 4.5</span><span class="mark"></span>
+            </div>
+            <div class="badge" id="b-ui">
+              <b>UI</b><span>Graphics · ≥ 3</span><span class="mark"></span>
+            </div>
+          </div>
+
+          <div class="suggest" id="suggest" role="alert">
+            <span class="warn-ico" aria-hidden="true">⚠</span>
+            <span class="sw" id="sg-sw"></span>
+            <span class="txt"
+              ><b class="warn-label">Warning</b> — Foreground fails AA (needs ≥ 4.5 : 1). Nearest
+              passing tone: <b id="sg-val"></b> (<span id="sg-ratio"></span> : 1)</span
+            >
+            <button class="btn btn--accent" id="apply">Apply to foreground</button>
+          </div>
+
+          <div class="ex-label">
+            <span class="tag-ex">Example</span> live preview — text on background
+          </div>
+          <div class="preview" id="preview">
+            <div class="lg">Large text — 가나다 Aa</div>
+            <div class="sm">Normal body text — The quick brown fox. 다람쥐 0123456789.</div>
+          </div>
+
+          <div class="note">
+            WCAG 2.1 AA — normal text must keep a contrast ratio of at least <b>4.5 : 1</b> (large
+            text <b>3 : 1</b>) to pass color-contrast accessibility.
+            <a
+              href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"
+              target="_blank"
+              rel="noopener"
+              >Source: WCAG 2.1 · SC 1.4.3 ↗</a
+            >
+          </div>
+          <div class="note">
+            Contrast ratios use opaque colors (alpha ignored), per the WCAG formula.
+          </div>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+      const round = (n, d = 0) => {
+        const p = 10 ** d;
+        return Math.round(n * p) / p;
+      };
+
+      /* ---------- sRGB gamma <-> linear (channels 0..1) ---------- */
+      const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+      const toGamma = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+
+      /* ---------- rgb(0..255) <-> hex ---------- */
+      function rgbToHex({ r, g, b, a }) {
+        const h = (n) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, "0");
+        let s = "#" + h(r) + h(g) + h(b);
+        if (a < 1) s += h(a * 255);
+        return s;
+      }
+
+      /* ---------- rgb <-> hsl ---------- */
+      function rgbToHsl({ r, g, b }) {
+        const R = r / 255,
+          G = g / 255,
+          B = b / 255;
+        const max = Math.max(R, G, B),
+          min = Math.min(R, G, B),
+          d = max - min;
+        const l = (max + min) / 2;
+        let h = 0,
+          s = 0;
+        if (d !== 0) {
+          s = d / (1 - Math.abs(2 * l - 1));
+          if (max === R) h = ((G - B) / d) % 6;
+          else if (max === G) h = (B - R) / d + 2;
+          else h = (R - G) / d + 4;
+          h *= 60;
+          if (h < 0) h += 360;
+        }
+        return { h, s: s * 100, l: l * 100 };
+      }
+      function hslToRgb(h, s, l) {
+        s /= 100;
+        l /= 100;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const hh = ((h % 360) + 360) % 360;
+        const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0,
+          g = 0,
+          b = 0;
+        if (hh < 60) [r, g, b] = [c, x, 0];
+        else if (hh < 120) [r, g, b] = [x, c, 0];
+        else if (hh < 180) [r, g, b] = [0, c, x];
+        else if (hh < 240) [r, g, b] = [0, x, c];
+        else if (hh < 300) [r, g, b] = [x, 0, c];
+        else [r, g, b] = [c, 0, x];
+        return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 };
+      }
+
+      /* ---------- rgb <-> OKLCh (Björn Ottosson) ---------- */
+      function rgbToOklch({ r, g, b }) {
+        const lr = toLinear(r / 255),
+          lg = toLinear(g / 255),
+          lb = toLinear(b / 255);
+        const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+        const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+        const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+        const l_ = Math.cbrt(l),
+          m_ = Math.cbrt(m),
+          s_ = Math.cbrt(s);
+        const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
+        const A = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_;
+        const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
+        let h = (Math.atan2(B, A) * 180) / Math.PI;
+        if (h < 0) h += 360;
+        return { L, C: Math.hypot(A, B), h };
+      }
+      function oklchToRgb(L, C, h) {
+        const hr = (h * Math.PI) / 180;
+        const A = C * Math.cos(hr),
+          B = C * Math.sin(hr);
+        const l_ = L + 0.3963377774 * A + 0.2158037573 * B;
+        const m_ = L - 0.1055613458 * A - 0.0638541728 * B;
+        const s_ = L - 0.0894841775 * A - 1.291485548 * B;
+        const l = l_ ** 3,
+          m = m_ ** 3,
+          s = s_ ** 3;
+        const lr = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+        const lg = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+        const lb = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+        return {
+          r: clamp(toGamma(lr), 0, 1) * 255,
+          g: clamp(toGamma(lg), 0, 1) * 255,
+          b: clamp(toGamma(lb), 0, 1) * 255,
+        };
+      }
+
+      /* ---------- parse any of hex / rgb / hsl / oklch (+ named fallback) ---------- */
+      const _probe = document.createElement("span");
+      function browserParse(str) {
+        _probe.style.color = "";
+        _probe.style.color = str;
+        if (!_probe.style.color) return null; // browser rejected -> invalid
+        document.body.appendChild(_probe);
+        const cs = getComputedStyle(_probe).color;
+        document.body.removeChild(_probe);
+        const m = cs.match(/rgba?\(([^)]+)\)/);
+        if (!m) return null;
+        const p = m[1]
+          .split(/[\s,/]+/)
+          .filter(Boolean)
+          .map(parseFloat);
+        return { r: p[0], g: p[1], b: p[2], a: p[3] != null ? p[3] : 1 };
+      }
+      function parseColor(input) {
+        const str = (input || "").trim().toLowerCase();
+        if (!str) return null;
+
+        let m = str.match(/^#([0-9a-f]{3,8})$/);
+        if (m) {
+          const hx = m[1],
+            len = hx.length;
+          const dup = (s) => parseInt(s + s, 16);
+          const pair = (i) => parseInt(hx.slice(i, i + 2), 16);
+          if (len === 3) return { r: dup(hx[0]), g: dup(hx[1]), b: dup(hx[2]), a: 1 };
+          if (len === 4)
+            return { r: dup(hx[0]), g: dup(hx[1]), b: dup(hx[2]), a: dup(hx[3]) / 255 };
+          if (len === 6) return { r: pair(0), g: pair(2), b: pair(4), a: 1 };
+          if (len === 8) return { r: pair(0), g: pair(2), b: pair(4), a: pair(6) / 255 };
+          return null;
+        }
+
+        m = str.match(/^(rgba?|hsla?|oklch)\(([^)]*)\)$/);
+        if (m) {
+          const fn = m[1];
+          const parts = m[2].split(/[\s,/]+/).filter(Boolean);
+          const alpha =
+            parts[3] != null
+              ? parts[3].endsWith("%")
+                ? parseFloat(parts[3]) / 100
+                : parseFloat(parts[3])
+              : 1;
+          const a = clamp(alpha, 0, 1);
+          if (fn === "rgb" || fn === "rgba") {
+            const ch = (t) => (t.endsWith("%") ? (parseFloat(t) / 100) * 255 : parseFloat(t));
+            const r = ch(parts[0]),
+              g = ch(parts[1]),
+              b = ch(parts[2]);
+            if ([r, g, b].some(Number.isNaN)) return null;
+            return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255), a };
+          }
+          if (fn === "hsl" || fn === "hsla") {
+            const h = parseFloat(parts[0]),
+              s = parseFloat(parts[1]),
+              l = parseFloat(parts[2]);
+            if ([h, s, l].some(Number.isNaN)) return null;
+            return { ...hslToRgb(h, s, l), a };
+          }
+          if (fn === "oklch") {
+            const L = parts[0].endsWith("%") ? parseFloat(parts[0]) / 100 : parseFloat(parts[0]);
+            const C = parseFloat(parts[1]),
+              h = parseFloat(parts[2]);
+            if ([L, C, h].some(Number.isNaN)) return null;
+            return { ...oklchToRgb(L, C, h), a };
+          }
+        }
+
+        return browserParse(str); // named colors, color(), etc.
+      }
+
+      /* ---------- formatters ---------- */
+      const fmtHex = (c) => rgbToHex(c);
+      function fmtRgb(c) {
+        const r = Math.round(c.r),
+          g = Math.round(c.g),
+          b = Math.round(c.b);
+        return c.a < 1 ? `rgba(${r}, ${g}, ${b}, ${round(c.a, 2)})` : `rgb(${r}, ${g}, ${b})`;
+      }
+      function fmtHsl(c) {
+        const { h, s, l } = rgbToHsl(c);
+        const base = `${round(h)}, ${round(s)}%, ${round(l)}%`;
+        return c.a < 1 ? `hsla(${base}, ${round(c.a, 2)})` : `hsl(${base})`;
+      }
+      function fmtOklch(c) {
+        const { L, C, h } = rgbToOklch(c);
+        const base = `${round(L, 3)} ${round(C, 3)} ${round(h, 1)}`;
+        return c.a < 1 ? `oklch(${base} / ${round(c.a, 2)})` : `oklch(${base})`;
+      }
+      const cssColor = (c) =>
+        `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${round(c.a, 3)})`;
+
+      // the four output formats, keyed — single source for both the card markup and render()
+      const FMT = { hex: fmtHex, rgb: fmtRgb, hsl: fmtHsl, oklch: fmtOklch };
+
+      /* ---------- WCAG contrast ---------- */
+      const luminance = ({ r, g, b }) =>
+        0.2126 * toLinear(r / 255) + 0.7152 * toLinear(g / 255) + 0.0722 * toLinear(b / 255);
+      const ratioFromLum = (l1, l2) => (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      const contrast = (fg, bg) => ratioFromLum(luminance(fg), luminance(bg));
+      const AA_NORMAL = 4.5; // WCAG AA contrast minimum for normal-size text
+
+      /* ---------- nearest AA-passing tone (move OKLCh lightness, keep hue/chroma) ---------- */
+      function suggestAA(fix, against, target = AA_NORMAL) {
+        const { L: curL, C, h } = rgbToOklch(fix);
+        const lumBg = luminance(against); // fixed across the sweep — hoist out of the loop
+        let best = null;
+        for (let i = 0; i <= 200; i++) {
+          const L = i / 200;
+          const rgb = oklchToRgb(L, C, h);
+          const ratio = ratioFromLum(luminance(rgb), lumBg);
+          if (ratio >= target) {
+            const d = Math.abs(L - curL);
+            if (!best || d < best.d) best = { d, rgb: { ...rgb, a: 1 }, ratio };
+          }
+        }
+        if (!best) {
+          const black = { r: 0, g: 0, b: 0, a: 1 },
+            white = { r: 255, g: 255, b: 255, a: 1 };
+          const rgb = contrast(black, against) >= contrast(white, against) ? black : white;
+          best = { rgb, ratio: contrast(rgb, against) };
+        }
+        return best;
+      }
+
+      /* ---------- checkerboard layer (for alpha) ---------- */
+      const CHECKER =
+        "conic-gradient(from 90deg, var(--line) 25%, transparent 0 50%, var(--line) 0 75%, transparent 0)";
+      function paint(el, c) {
+        el.style.backgroundImage = `linear-gradient(${cssColor(c)}, ${cssColor(c)}), ${CHECKER}`;
+      }
+
+      /* ---------- state + render ---------- */
+      const state = {
+        fg: { r: 20, g: 22, b: 26, a: 1 }, // #14161a (ink)
+        bg: { r: 246, g: 247, b: 249, a: 1 }, // #f6f7f9 (paper)
+      };
+      const COLORS = [
+        { key: "fg", title: "foreground (text)", label: "foreground" },
+        { key: "bg", title: "background", label: "background" },
+      ];
+      let suggestion = null;
+
+      // both color cards are identical bar the key/label — build them from one template
+      $("colors").innerHTML = COLORS.map(
+        ({ key, title, label }) => `
+        <div class="color-card panel">
+          <h2>// ${title}</h2>
+          <div class="swatch" id="${key}-swatch"></div>
+          <div class="input-row">
+            <input id="${key}-input" type="text" spellcheck="false" autocomplete="off" aria-label="${label} color" />
+            <input id="${key}-pick" type="color" aria-label="${label} picker" />
+            <button class="btn eye" id="${key}-eye" title="Pick a color from the screen (EyeDropper)">Pick</button>
+          </div>
+          <div class="readouts">
+            ${Object.keys(FMT)
+              .map(
+                (f) =>
+                  `<div class="readout"><span class="fmt">${f}</span><code id="${key}-${f}"></code><button class="btn copy" data-target="${key}-${f}">Copy</button></div>`,
+              )
+              .join("")}
+          </div>
+        </div>`,
+      ).join("");
+
+      function setBadge(id, ok) {
+        const el = $(id);
+        el.classList.toggle("pass", ok);
+        el.classList.toggle("fail", !ok);
+        el.querySelector(".mark").textContent = ok ? "✓ pass" : "✗ fail";
+      }
+
+      function render(skipText) {
+        for (const { key } of COLORS) {
+          const c = state[key];
+          const hex = rgbToHex(c);
+          paint($(key + "-swatch"), c);
+          $(key + "-pick").value = hex.slice(0, 7); // 6-digit, no alpha
+          if (key !== skipText) {
+            const inp = $(key + "-input");
+            inp.value = hex;
+            inp.classList.remove("invalid");
+          }
+          for (const f in FMT) $(`${key}-${f}`).textContent = FMT[f](c);
+        }
+
+        const ratio = contrast(state.fg, state.bg);
+        $("ratio-num").textContent = ratio.toFixed(2) + " : 1";
+        setBadge("b-naa", ratio >= AA_NORMAL);
+        setBadge("b-naaa", ratio >= 7);
+        setBadge("b-laa", ratio >= 3);
+        setBadge("b-laaa", ratio >= 4.5);
+        setBadge("b-ui", ratio >= 3);
+
+        const pv = $("preview");
+        paint(pv, state.bg);
+        pv.style.color = cssColor(state.fg);
+
+        if (ratio < AA_NORMAL) {
+          const sg = suggestAA(state.fg, state.bg);
+          suggestion = sg.rgb;
+          $("sg-sw").style.backgroundColor = rgbToHex(sg.rgb);
+          $("sg-val").textContent = rgbToHex(sg.rgb);
+          $("sg-ratio").textContent = sg.ratio.toFixed(2);
+          $("suggest").classList.add("show");
+        } else {
+          $("suggest").classList.remove("show");
+        }
+
+        writeUrl();
+      }
+
+      /* ---------- URL state (#fg=..&bg=..) ---------- */
+      function writeUrl() {
+        const h = `fg=${rgbToHex(state.fg).slice(1)}&bg=${rgbToHex(state.bg).slice(1)}`;
+        history.replaceState(null, "", "#" + h);
+      }
+      function readUrl() {
+        const p = new URLSearchParams(location.hash.slice(1));
+        const fg = p.get("fg") && parseColor("#" + p.get("fg"));
+        const bg = p.get("bg") && parseColor("#" + p.get("bg"));
+        if (fg) state.fg = fg;
+        if (bg) state.bg = bg;
+      }
+
+      /* ---------- clipboard (clipboard API + execCommand fallback) ---------- */
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      /* ---------- wiring ---------- */
+      for (const { key } of COLORS) {
+        $(key + "-input").addEventListener("input", (e) => {
+          const c = parseColor(e.target.value);
+          if (c) {
+            state[key] = c;
+            render(key);
+          } else {
+            e.target.classList.add("invalid");
+          }
+        });
+        $(key + "-pick").addEventListener("input", (e) => {
+          const c = parseColor(e.target.value);
+          c.a = state[key].a; // <input type=color> has no alpha — keep current
+          state[key] = c;
+          render();
+        });
+        // clicking the swatch opens the native color picker
+        $(key + "-swatch").addEventListener("click", () => $(key + "-pick").click());
+        const eye = $(key + "-eye");
+        if (window.EyeDropper) {
+          eye.addEventListener("click", async () => {
+            try {
+              const res = await new EyeDropper().open();
+              const c = parseColor(res.sRGBHex);
+              c.a = state[key].a;
+              state[key] = c;
+              render();
+            } catch {
+              /* user cancelled */
+            }
+          });
+        } else {
+          eye.hidden = true;
+        }
+      }
+
+      $("swap").addEventListener("click", () => {
+        const t = state.fg;
+        state.fg = state.bg;
+        state.bg = t;
+        render();
+      });
+      $("apply").addEventListener("click", () => {
+        if (suggestion) {
+          state.fg = { ...suggestion };
+          render();
+        }
+      });
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".copy");
+        if (!btn) return;
+        const ok = await copyText($(btn.dataset.target).textContent);
+        const old = btn.textContent;
+        btn.textContent = ok ? "Copied" : "Ctrl+C";
+        setTimeout(() => (btn.textContent = old), 1200);
+      });
+
+      window.addEventListener("hashchange", () => {
+        readUrl();
+        render();
+      });
+
+      readUrl();
+      render();
+    </script>
+  </body>
+</html>

@@ -19,6 +19,13 @@ window.TOOLS = [
     tag: "css",
     blurb: "Tune a CSS box-shadow with live preview and copy-ready output.",
   },
+  {
+    slug: "color-contrast",
+    name: "Color & Contrast",
+    href: "app/color-contrast.html",
+    tag: "color",
+    blurb: "Convert hex / rgb / hsl / oklch and check WCAG contrast with a live preview.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
