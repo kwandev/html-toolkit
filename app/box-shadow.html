@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Box Shadow — toolkit</title>
+    <meta
+      name="description"
+      content="Tune a CSS box-shadow with live preview and copy-ready output."
+    />
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1080px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: var(--maxw);
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 320px 1fr;
+        align-items: start;
+      }
+      @media (max-width: 720px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+      .controls {
+        display: grid;
+        gap: 16px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .val {
+        color: var(--ink);
+      }
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .stage {
+        display: grid;
+        place-items: center;
+        min-height: 320px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background-image: radial-gradient(var(--line) 1px, transparent 1px);
+        background-size: 16px 16px;
+      }
+      .demo {
+        width: 150px;
+        height: 150px;
+        border-radius: 16px;
+        background: var(--surface);
+      }
+      .out {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .out code {
+        flex: 1;
+        padding: 12px 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
+        overflow-x: auto;
+        /* white-space: nowrap; */
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="box-shadow">
+      <div class="wrap">
+        <div class="controls panel">
+          <div class="row">
+            <div class="field">
+              <label>x <span class="val" id="lx">0px</span></label
+              ><input id="x" type="range" min="-60" max="60" value="0" />
+            </div>
+            <div class="field">
+              <label>y <span class="val" id="ly">12px</span></label
+              ><input id="y" type="range" min="-60" max="60" value="12" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>blur <span class="val" id="lb">24px</span></label
+              ><input id="b" type="range" min="0" max="120" value="24" />
+            </div>
+            <div class="field">
+              <label>spread <span class="val" id="ls">-8px</span></label
+              ><input id="s" type="range" min="-40" max="40" value="-8" />
+            </div>
+          </div>
+          <div class="field"><label>color</label><input id="c" type="color" value="#3340e0" /></div>
+          <div class="field">
+            <label>opacity <span class="val" id="lo">22%</span></label
+            ><input id="o" type="range" min="0" max="100" value="22" />
+          </div>
+          <label class="toggle"><input id="inset" type="checkbox" /> inset</label>
+        </div>
+
+        <div>
+          <div class="stage"><div class="demo" id="demo"></div></div>
+          <div class="out">
+            <code id="code">box-shadow: …;</code>
+            <button class="btn btn--accent" id="copy">Copy</button>
+          </div>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        x: $("x"),
+        y: $("y"),
+        b: $("b"),
+        s: $("s"),
+        c: $("c"),
+        o: $("o"),
+        inset: $("inset"),
+      };
+      const hexToRgb = (h) => {
+        const n = parseInt(h.slice(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+      };
+
+      function update() {
+        const [r, g, bl] = hexToRgb(els.c.value);
+        const a = (els.o.value / 100).toFixed(2);
+        const inset = els.inset.checked ? "inset " : "";
+        const value = `${inset}${els.x.value}px ${els.y.value}px ${els.b.value}px ${els.s.value}px rgba(${r}, ${g}, ${bl}, ${a})`;
+        $("demo").style.boxShadow = value;
+        $("code").textContent = `box-shadow: ${value};`;
+        $("lx").textContent = els.x.value + "px";
+        $("ly").textContent = els.y.value + "px";
+        $("lb").textContent = els.b.value + "px";
+        $("ls").textContent = els.s.value + "px";
+        $("lo").textContent = els.o.value + "%";
+      }
+
+      Object.values(els).forEach((el) => el.addEventListener("input", update));
+
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      $("copy").addEventListener("click", async () => {
+        const btn = $("copy");
+        const ok = await copyText($("code").textContent);
+        btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+        setTimeout(() => (btn.textContent = "Copy"), 1200);
+      });
+
+      update();
+    </script>
+  </body>
+</html>

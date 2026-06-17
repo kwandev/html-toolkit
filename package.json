@@ -1,0 +1,16 @@
+{
+  "name": "html-toolkit",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "format": "oxfmt \"**/*.{html,css,js,md}\"",
+    "format:check": "oxfmt --check \"**/*.{html,css,js,md}\"",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0"
+  },
+  "packageManager": "pnpm@10.32.1"
+}
