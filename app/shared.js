@@ -13,11 +13,11 @@ const INDEX_HREF = new URL("index.html", ROOT).href;
 
 window.TOOLS = [
   {
-    slug: "box-shadow",
-    name: "Box Shadow",
-    href: "app/box-shadow.html",
-    tag: "css",
-    blurb: "Tune a CSS box-shadow with live preview and copy-ready output.",
+    slug: "text-diff",
+    name: "Text Diff",
+    href: "app/text-diff.html",
+    tag: "text",
+    blurb: "Compare two blocks of text line by line - any format, original formatting preserved.",
   },
   {
     slug: "color-contrast",
@@ -25,6 +25,13 @@ window.TOOLS = [
     href: "app/color-contrast.html",
     tag: "color",
     blurb: "Convert hex / rgb / hsl / oklch and check WCAG contrast with a live preview.",
+  },
+  {
+    slug: "box-shadow",
+    name: "Box Shadow",
+    href: "app/box-shadow.html",
+    tag: "css",
+    blurb: "Tune a CSS box-shadow with live preview and copy-ready output.",
   },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];

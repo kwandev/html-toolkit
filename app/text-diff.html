@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Text Diff — toolkit</title>
+    <meta
+      name="description"
+      content="Compare two blocks of text line by line — any format, original formatting preserved."
+    />
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      /* diff-specific tints — mix with --surface so light/dark both adapt */
+      :root {
+        --diff-del-bg: color-mix(in oklab, oklch(0.62 0.2 25) 13%, var(--surface));
+        --diff-add-bg: color-mix(in oklab, oklch(0.62 0.16 150) 15%, var(--surface));
+        --diff-del-mark: color-mix(in oklab, oklch(0.62 0.2 25) 32%, var(--surface));
+        --diff-add-mark: color-mix(in oklab, oklch(0.62 0.16 150) 34%, var(--surface));
+        --diff-empty-bg: var(--surface-2);
+        --c-add-text: oklch(0.6 0.16 150);
+        --c-del-text: oklch(0.62 0.2 25);
+      }
+
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: var(--maxw);
+        display: grid;
+        gap: 16px;
+      }
+
+      /* --- inputs --- */
+      .inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 720px) {
+        .inputs {
+          grid-template-columns: 1fr;
+        }
+      }
+      textarea {
+        font: inherit;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        line-height: 1.5;
+        width: 100%;
+        min-height: 220px;
+        resize: vertical;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink);
+        white-space: pre;
+        tab-size: 2;
+        overflow: auto;
+      }
+
+      /* --- toolbar --- */
+      .bar2 {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        padding: 12px 14px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+      }
+      .seg button {
+        font: inherit;
+        font-weight: 560;
+        border: 0;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 0.45em 0.95em;
+        cursor: pointer;
+      }
+      .seg button + button {
+        border-left: 1px solid var(--line);
+      }
+      .seg button.on {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .toggle input {
+        accent-color: var(--accent);
+      }
+      .spacer {
+        flex: 1 1 0;
+      }
+      .stats {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .stats .plus {
+        color: var(--c-add-text);
+        font-weight: 600;
+      }
+      .stats .minus {
+        color: var(--c-del-text);
+        font-weight: 600;
+      }
+      .btn.sm {
+        padding: 0.45em 0.8em;
+        font-size: 0.85rem;
+      }
+
+      /* --- diff output --- */
+      .result {
+        padding: 0;
+        overflow: hidden;
+      }
+      .diff {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.55;
+        overflow-x: auto;
+      }
+      .emptyhint {
+        padding: 40px 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      /* One grid for the whole diff so gutter + column widths line up across every
+         row. Per-row grids would size each gutter independently → ragged columns;
+         rows use display:contents so their cells become items of this single grid. */
+      .diff.split {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+      }
+      .diff.unified {
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr);
+      }
+      .drow {
+        display: contents;
+      }
+      .gut {
+        padding: 0 10px;
+        text-align: right;
+        color: var(--muted);
+        background: var(--surface);
+        border-right: 1px solid var(--line);
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .cell {
+        padding: 0 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        tab-size: 2;
+      }
+      .sg {
+        display: inline-block;
+        width: 1.2ch;
+        color: var(--muted);
+      }
+      /* split: per-cell tint */
+      .cell.c-del,
+      .gut.g-del {
+        background: var(--diff-del-bg);
+      }
+      .cell.c-add,
+      .gut.g-add {
+        background: var(--diff-add-bg);
+      }
+      .cell.c-empty,
+      .gut.g-empty {
+        background: var(--diff-empty-bg);
+      }
+      /* unified: per-row tint */
+      .u-del .cell,
+      .u-del .gut {
+        background: var(--diff-del-bg);
+      }
+      .u-add .cell,
+      .u-add .gut {
+        background: var(--diff-add-bg);
+      }
+      mark.wd {
+        background: var(--diff-del-mark);
+        color: inherit;
+        border-radius: 3px;
+      }
+      mark.wa {
+        background: var(--diff-add-mark);
+        color: inherit;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="text-diff">
+      <div class="wrap">
+        <div class="inputs">
+          <div class="field">
+            <label for="left">Original</label>
+            <textarea id="left" spellcheck="false" placeholder="Paste original text…"></textarea>
+          </div>
+          <div class="field">
+            <label for="right">Changed</label>
+            <textarea id="right" spellcheck="false" placeholder="Paste changed text…"></textarea>
+          </div>
+        </div>
+
+        <div class="panel bar2">
+          <div class="seg" role="group" aria-label="View mode">
+            <button id="v-split" class="on" type="button">Split</button>
+            <button id="v-unified" type="button">Unified</button>
+          </div>
+          <label class="toggle"><input id="opt-wh" type="checkbox" checked /> Word highlight</label>
+          <label class="toggle"><input id="opt-ws" type="checkbox" /> Ignore whitespace</label>
+          <label class="toggle"><input id="opt-cs" type="checkbox" /> Ignore case</label>
+          <span class="spacer"></span>
+          <span class="stats" id="stats"></span>
+          <button class="btn sm" id="swap" type="button">Swap</button>
+          <button class="btn sm" id="clear" type="button">Clear</button>
+          <button class="btn sm btn--accent" id="copy" type="button">Copy diff</button>
+        </div>
+
+        <div class="panel result"><div id="out" class="diff"></div></div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const LS_KEY = "html-toolkit:text-diff";
+
+      const el = {
+        left: $("left"),
+        right: $("right"),
+        out: $("out"),
+        stats: $("stats"),
+        ws: $("opt-ws"),
+        cs: $("opt-cs"),
+        wh: $("opt-wh"),
+        split: $("v-split"),
+        unified: $("v-unified"),
+      };
+
+      let view = "split";
+      let aLines = [];
+      let bLines = [];
+      let lastOps = [];
+
+      /* ---------- helpers ---------- */
+      // Escape so html/js/markup input is shown as text and never rendered.
+      const esc = (s) =>
+        s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      // Split verbatim — never trim, indentation/whitespace preserved as-is.
+      const splitLines = (t) => (t.length ? t.split("\n") : []);
+      // Tokenize keeping whitespace + punctuation as their own tokens (format preserved).
+      const tokenize = (s) => s.match(/(\s+|\w+|[^\s\w])/g) || [];
+
+      // Comparison key for a line (display always uses the original).
+      function lineKey(line) {
+        let k = line;
+        if (el.cs.checked) k = k.toLowerCase();
+        if (el.ws.checked) k = k.replace(/\s+/g, "");
+        return k;
+      }
+      const tokKey = (t) => (el.cs.checked ? t.toLowerCase() : t);
+
+      /* ---------- LCS diff over two key arrays → index ops ---------- */
+      function diffIndices(ka, kb) {
+        const n = ka.length;
+        const m = kb.length;
+        if (n === 0 || m === 0 || n * m > 4_000_000) return cheapDiff(ka, kb);
+        const dp = [];
+        for (let i = 0; i <= n; i++) dp.push(new Uint32Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+          const row = dp[i];
+          const next = dp[i + 1];
+          for (let j = m - 1; j >= 0; j--) {
+            row[j] = ka[i] === kb[j] ? next[j + 1] + 1 : Math.max(next[j], row[j + 1]);
+          }
+        }
+        const ops = [];
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+          if (ka[i] === kb[j]) {
+            ops.push({ type: "equal", ai: i, bi: j });
+            i++;
+            j++;
+          } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+            ops.push({ type: "del", ai: i, bi: -1 });
+            i++;
+          } else {
+            ops.push({ type: "add", ai: -1, bi: j });
+            j++;
+          }
+        }
+        while (i < n) ops.push({ type: "del", ai: i++, bi: -1 });
+        while (j < m) ops.push({ type: "add", ai: -1, bi: j++ });
+        return ops;
+      }
+
+      // Fallback for huge / empty inputs: common prefix + suffix, middle = replace.
+      function cheapDiff(ka, kb) {
+        const n = ka.length;
+        const m = kb.length;
+        let p = 0;
+        while (p < n && p < m && ka[p] === kb[p]) p++;
+        let s = 0;
+        while (s < n - p && s < m - p && ka[n - 1 - s] === kb[m - 1 - s]) s++;
+        const ops = [];
+        for (let i = 0; i < p; i++) ops.push({ type: "equal", ai: i, bi: i });
+        for (let i = p; i < n - s; i++) ops.push({ type: "del", ai: i, bi: -1 });
+        for (let j = p; j < m - s; j++) ops.push({ type: "add", ai: -1, bi: j });
+        for (let k = 0; k < s; k++) ops.push({ type: "equal", ai: n - s + k, bi: m - s + k });
+        return ops;
+      }
+
+      /* ---------- word-level diff for a changed line pair ---------- */
+      function wordDiffHtml(aLine, bLine) {
+        const at = tokenize(aLine);
+        const bt = tokenize(bLine);
+        const ops = diffIndices(at.map(tokKey), bt.map(tokKey));
+        let a = "";
+        let b = "";
+        for (const op of ops) {
+          if (op.type === "equal") {
+            a += esc(at[op.ai]);
+            b += esc(bt[op.bi]);
+          } else if (op.type === "del") {
+            a += `<mark class="wd">${esc(at[op.ai])}</mark>`;
+          } else {
+            b += `<mark class="wa">${esc(bt[op.bi])}</mark>`;
+          }
+        }
+        return { a, b };
+      }
+
+      /* ---------- group ops into equal rows + change blocks ---------- */
+      function walkBlocks(ops, onEqual, onChange) {
+        let dels = [];
+        let adds = [];
+        const flush = () => {
+          if (dels.length || adds.length) {
+            onChange(dels, adds);
+            dels = [];
+            adds = [];
+          }
+        };
+        for (const op of ops) {
+          if (op.type === "equal") {
+            flush();
+            onEqual(op);
+          } else if (op.type === "del") {
+            dels.push(op.ai);
+          } else {
+            adds.push(op.bi);
+          }
+        }
+        flush();
+      }
+
+      // For a change block, build per-line html (word-highlight paired del[k]/add[k]).
+      function blockHtml(dels, adds) {
+        const both = Math.min(dels.length, adds.length);
+        const hl = el.wh.checked;
+        const aRows = [];
+        const bRows = [];
+        // Paired changed lines: word-highlight the parts that differ — one diff feeds both sides.
+        for (let k = 0; k < both; k++) {
+          const wd = hl
+            ? wordDiffHtml(aLines[dels[k]], bLines[adds[k]])
+            : { a: esc(aLines[dels[k]]), b: esc(bLines[adds[k]]) };
+          aRows.push({ ai: dels[k], html: wd.a });
+          bRows.push({ bi: adds[k], html: wd.b });
+        }
+        // Unpaired leftovers: pure deletions or pure additions.
+        for (let k = both; k < dels.length; k++)
+          aRows.push({ ai: dels[k], html: esc(aLines[dels[k]]) });
+        for (let k = both; k < adds.length; k++)
+          bRows.push({ bi: adds[k], html: esc(bLines[adds[k]]) });
+        return { aRows, bRows };
+      }
+
+      /* ---------- renderers ---------- */
+      const gut = (n, cls) => `<div class="gut${cls ? " g-" + cls : ""}">${n}</div>`;
+      const cell = (h, cls) => `<div class="cell${cls ? " c-" + cls : ""}">${h}</div>`;
+      const emptySide = gut("", "empty") + cell("", "empty");
+
+      function renderSplit(ops) {
+        let html = "";
+        walkBlocks(
+          ops,
+          (o) => {
+            html +=
+              `<div class="drow">` +
+              gut(o.ai + 1, "") +
+              cell(esc(aLines[o.ai]), "") +
+              gut(o.bi + 1, "") +
+              cell(esc(bLines[o.bi]), "") +
+              `</div>`;
+          },
+          (dels, adds) => {
+            const { aRows, bRows } = blockHtml(dels, adds);
+            const rows = Math.max(aRows.length, bRows.length);
+            for (let k = 0; k < rows; k++) {
+              const a = aRows[k];
+              const b = bRows[k];
+              html +=
+                `<div class="drow">` +
+                (a ? gut(a.ai + 1, "del") + cell(a.html, "del") : emptySide) +
+                (b ? gut(b.bi + 1, "add") + cell(b.html, "add") : emptySide) +
+                `</div>`;
+            }
+          },
+        );
+        return html;
+      }
+
+      const urow = (o, n, sign, h, cls) =>
+        `<div class="drow${cls ? " u-" + cls : ""}"><div class="gut">${o}</div><div class="gut">${n}</div><div class="cell"><span class="sg">${sign}</span>${h}</div></div>`;
+
+      function renderUnified(ops) {
+        let html = "";
+        walkBlocks(
+          ops,
+          (o) => {
+            html += urow(o.ai + 1, o.bi + 1, " ", esc(aLines[o.ai]), "");
+          },
+          (dels, adds) => {
+            const { aRows, bRows } = blockHtml(dels, adds);
+            for (const a of aRows) html += urow(a.ai + 1, "", "-", a.html, "del");
+            for (const b of bRows) html += urow("", b.bi + 1, "+", b.html, "add");
+          },
+        );
+        return html;
+      }
+
+      const hint = (m) => `<div class="emptyhint">${m}</div>`;
+
+      /* ---------- main render ---------- */
+      function render() {
+        aLines = splitLines(el.left.value);
+        bLines = splitLines(el.right.value);
+        const ops = diffIndices(aLines.map(lineKey), bLines.map(lineKey));
+        lastOps = ops;
+
+        let adds = 0;
+        let dels = 0;
+        for (const o of ops) {
+          if (o.type === "add") adds++;
+          else if (o.type === "del") dels++;
+        }
+        el.stats.innerHTML =
+          adds || dels
+            ? `<span class="plus">+${adds}</span> <span class="minus">−${dels}</span>`
+            : `<span>identical</span>`;
+
+        if (!aLines.length && !bLines.length) {
+          el.out.className = "diff";
+          el.out.innerHTML = hint("Paste or type text in both panes to compare.");
+          return;
+        }
+        if (!adds && !dels) {
+          el.out.className = "diff";
+          el.out.innerHTML = hint("No differences — the two inputs are identical.");
+          return;
+        }
+        el.out.className = "diff " + view;
+        el.out.innerHTML = view === "split" ? renderSplit(ops) : renderUnified(ops);
+      }
+
+      // Build a plain unified-diff string for the clipboard.
+      function unifiedText() {
+        let t = "";
+        walkBlocks(
+          lastOps,
+          (o) => {
+            t += " " + aLines[o.ai] + "\n";
+          },
+          (dels, adds) => {
+            for (const i of dels) t += "-" + aLines[i] + "\n";
+            for (const j of adds) t += "+" + bLines[j] + "\n";
+          },
+        );
+        return t;
+      }
+
+      /* ---------- clipboard (same fallback as other tools) ---------- */
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      /* ---------- persistence ---------- */
+      const DEMO_A = `{\n  "name": "toolkit",\n  "version": "1.0.0",\n  "tools": ["box-shadow", "color-contrast"]\n}`;
+      const DEMO_B = `{\n  "name": "toolkit",\n  "version": "1.1.0",\n  "tools": ["box-shadow", "color-contrast", "text-diff"],\n  "build": false\n}`;
+
+      function save() {
+        try {
+          localStorage.setItem(
+            LS_KEY,
+            JSON.stringify({
+              left: el.left.value,
+              right: el.right.value,
+              view,
+              ws: el.ws.checked,
+              cs: el.cs.checked,
+              wh: el.wh.checked,
+            }),
+          );
+        } catch {
+          /* storage unavailable — ignore */
+        }
+      }
+
+      function load() {
+        let s = null;
+        try {
+          s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+        } catch {
+          s = null;
+        }
+        if (s) {
+          el.left.value = s.left ?? "";
+          el.right.value = s.right ?? "";
+          el.ws.checked = !!s.ws;
+          el.cs.checked = !!s.cs;
+          el.wh.checked = s.wh !== false;
+          view = s.view === "unified" ? "unified" : "split";
+        } else {
+          el.left.value = DEMO_A;
+          el.right.value = DEMO_B;
+        }
+      }
+
+      /* ---------- events ---------- */
+      let timer;
+      const rerender = () => {
+        render();
+        save();
+      };
+      // Live compare: debounce the diff + persist together so neither runs on every keystroke.
+      const schedule = () => {
+        clearTimeout(timer);
+        timer = setTimeout(rerender, 150);
+      };
+
+      function setView(v) {
+        view = v;
+        el.split.classList.toggle("on", v === "split");
+        el.unified.classList.toggle("on", v === "unified");
+        rerender();
+      }
+
+      el.left.addEventListener("input", schedule);
+      el.right.addEventListener("input", schedule);
+      [el.ws, el.cs, el.wh].forEach((c) => c.addEventListener("change", rerender));
+      el.split.addEventListener("click", () => setView("split"));
+      el.unified.addEventListener("click", () => setView("unified"));
+
+      $("swap").addEventListener("click", () => {
+        const t = el.left.value;
+        el.left.value = el.right.value;
+        el.right.value = t;
+        rerender();
+      });
+      $("clear").addEventListener("click", () => {
+        el.left.value = "";
+        el.right.value = "";
+        rerender();
+      });
+      $("copy").addEventListener("click", async () => {
+        const btn = $("copy");
+        const ok = await copyText(unifiedText());
+        btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+        setTimeout(() => (btn.textContent = "Copy diff"), 1200);
+      });
+
+      /* ---------- init ---------- */
+      load();
+      el.split.classList.toggle("on", view === "split");
+      el.unified.classList.toggle("on", view === "unified");
+      render();
+    </script>
+  </body>
+</html>
