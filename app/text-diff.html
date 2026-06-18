@@ -196,7 +196,7 @@
         font-size: 0.85rem;
         line-height: 1.5;
         width: 100%;
-        min-height: 220px;
+        min-height: clamp(220px, 50vw, 460px);
         resize: vertical;
         padding: 12px 14px;
         border: 1px solid var(--line);
@@ -378,10 +378,12 @@
           <label class="toggle"><input id="opt-ws" type="checkbox" /> Ignore whitespace</label>
           <label class="toggle"><input id="opt-cs" type="checkbox" /> Ignore case</label>
           <span class="spacer"></span>
-          <span class="stats" id="stats"></span>
-          <button class="btn sm" id="swap" type="button">Swap</button>
-          <button class="btn sm" id="clear" type="button">Clear</button>
-          <button class="btn sm btn--accent" id="copy" type="button">Copy diff</button>
+          <div>
+            <span class="stats" id="stats"></span>
+            <button class="btn sm" id="swap" type="button">Swap</button>
+            <button class="btn sm" id="clear" type="button">Clear</button>
+            <button class="btn sm btn--accent" id="copy" type="button">Copy diff</button>
+          </div>
         </div>
 
         <div class="panel result"><div id="out" class="diff"></div></div>
