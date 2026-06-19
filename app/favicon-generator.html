@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Favicon Generator — toolkit</title>
+    <meta
+      name="description"
+      content="Upload one SVG and get the modern favicon set — favicon.ico, apple-touch-icon, PWA icons, and a web manifest — plus a ready-to-paste <head> snippet. All in your browser."
+    />
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: var(--maxw);
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 340px 1fr;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+      .controls {
+        display: grid;
+        gap: 16px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .val {
+        color: var(--ink);
+      }
+
+      input[type="text"] {
+        width: 100%;
+        font: inherit;
+        padding: 0.5em 0.65em;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      /* transparent-art reveal — light checkerboard behind icons */
+      .checker {
+        background-color: #fff;
+        background-image:
+          linear-gradient(45deg, #dfe3e8 25%, transparent 25%, transparent 75%, #dfe3e8 75%),
+          linear-gradient(45deg, #dfe3e8 25%, transparent 25%, transparent 75%, #dfe3e8 75%);
+        background-size: 12px 12px;
+        background-position:
+          0 0,
+          6px 6px;
+      }
+
+      .dropzone {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        border: 1.5px dashed var(--line);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .dropzone:hover,
+      .dropzone.drag {
+        border-color: var(--accent);
+        background: var(--accent-2);
+      }
+      .dropzone .preview {
+        width: 96px;
+        height: 96px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .dropzone .preview img {
+        max-width: 84px;
+        max-height: 84px;
+      }
+      .dropzone .hint {
+        font-size: 0.86rem;
+        color: var(--ink);
+      }
+      .dropzone .hint2 {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .error {
+        color: #d23b3b;
+        font-size: 0.84rem;
+      }
+
+      .results {
+        display: grid;
+        gap: 18px;
+      }
+      .bar2 {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .count {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .assets {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+      }
+      .asset {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+        text-align: center;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+      .asset .thumb {
+        width: 64px;
+        height: 64px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--surface-2);
+        overflow: hidden;
+      }
+      .asset .thumb img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .asset .thumb .glyph {
+        font-family: var(--font-mono);
+        font-size: 1.1rem;
+        color: var(--muted);
+      }
+      .asset .name {
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        word-break: break-all;
+        line-height: 1.3;
+      }
+      .asset .dim {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        color: var(--muted);
+      }
+      .asset .dl {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.76rem;
+        padding: 0.4em 0.6em;
+      }
+
+      .snippet {
+        display: grid;
+        gap: 8px;
+      }
+      .snippet .shead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .snippet .shead h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: -0.01em;
+      }
+      .snippet pre {
+        margin: 0;
+        padding: 12px 14px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="favicon-generator">
+      <div class="wrap">
+        <div class="controls panel">
+          <div class="field">
+            <label>SVG source</label>
+            <div class="dropzone" id="dz" role="button" tabindex="0" aria-label="Upload an SVG">
+              <div class="preview checker"><img id="pv" alt="SVG preview" hidden /></div>
+              <div class="hint" id="pvhint">Drop an SVG here</div>
+              <div class="hint2">click · drop · paste</div>
+            </div>
+            <input type="file" id="file" accept=".svg,image/svg+xml" hidden />
+            <div class="error" id="err" hidden></div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="appname">App name</label>
+              <input id="appname" type="text" value="My App" spellcheck="false" />
+            </div>
+            <div class="field">
+              <label for="shortname">Short name</label>
+              <input id="shortname" type="text" value="App" spellcheck="false" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="theme">Theme color</label
+              ><input id="theme" type="color" value="#3b5bdb" />
+            </div>
+            <div class="field">
+              <label for="bg">Background</label><input id="bg" type="color" value="#ffffff" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="iconBg">Icon background</label
+              ><input id="iconBg" type="color" value="#ffffff" />
+            </div>
+            <div class="field">
+              <label for="pad">Apple padding <span class="val" id="padval">20px</span></label
+              ><input id="pad" type="range" min="0" max="48" value="20" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="prefix">Path prefix</label>
+            <input id="prefix" type="text" value="/" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="results">
+          <div class="bar2">
+            <button class="btn btn--accent" id="zip" type="button">Download all (.zip)</button>
+            <span class="count" id="count"></span>
+          </div>
+
+          <div class="assets" id="assets" aria-label="Generated files"></div>
+
+          <div class="snippet">
+            <div class="shead">
+              <h3>&lt;head&gt; snippet</h3>
+              <button class="btn" id="copyhead" type="button">Copy</button>
+            </div>
+            <pre id="headcode"></pre>
+          </div>
+
+          <div class="snippet">
+            <div class="shead">
+              <h3>manifest.webmanifest</h3>
+              <button class="btn" id="copymanifest" type="button">Copy</button>
+            </div>
+            <pre id="manifestcode"></pre>
+          </div>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      /* A neutral starter mark so the tool is useful before any upload. */
+      const DEMO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#3b5bdb"/>
+  <path d="M142 40 96 140h34l-20 76 82-120h-46z" fill="#ffffff"/>
+</svg>`;
+
+      /* Files we emit, in a stable order. dim is the label shown on each card. */
+      const state = { svg: DEMO_SVG, files: new Map(), urls: [] };
+
+      /* ---------- clipboard (same fallback every tool uses) ---------- */
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      function wireCopy(btnId, getText) {
+        $(btnId).addEventListener("click", async () => {
+          const btn = $(btnId);
+          const ok = await copyText(getText());
+          btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+          setTimeout(() => (btn.textContent = "Copy"), 1200);
+        });
+      }
+
+      /* ---------- SVG → bitmap ---------- */
+      // Reconstruct the SVG with explicit width/height so it loads with a real
+      // intrinsic size in every browser (some render a viewBox-only SVG as 0×0
+      // or 150×150 when used as an <img>). viewBox is preserved for crisp scaling.
+      function normalizeSvg(svgText) {
+        const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+        if (doc.getElementsByTagName("parsererror").length) throw new Error("parse");
+        const svg = doc.querySelector("svg");
+        if (!svg) throw new Error("no <svg>");
+        if (!svg.getAttribute("xmlns")) svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        let w, h;
+        const vb = svg.getAttribute("viewBox");
+        if (vb) {
+          const p = vb
+            .trim()
+            .split(/[\s,]+/)
+            .map(Number);
+          w = p[2] || 0;
+          h = p[3] || 0;
+        }
+        // Fill each axis independently so a valid viewBox dimension is never
+        // clobbered by the width/height fallback.
+        if (!w) w = parseFloat(svg.getAttribute("width")) || 0;
+        if (!h) h = parseFloat(svg.getAttribute("height")) || 0;
+        if (!w || !h) w = h = 256;
+        svg.setAttribute("width", w);
+        svg.setAttribute("height", h);
+        return { text: new XMLSerializer().serializeToString(svg), aspect: w / h };
+      }
+
+      function loadSvgImage(svgText) {
+        const { text, aspect } = normalizeSvg(svgText);
+        const url = URL.createObjectURL(new Blob([text], { type: "image/svg+xml;charset=utf-8" }));
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ img, aspect, url });
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("load"));
+          };
+          img.src = url;
+        });
+      }
+
+      // Draw the source centered & contained on a square canvas, optional opaque
+      // background and padding (as a fraction of the side).
+      function drawIcon(src, size, { bg = null, pad = 0 } = {}) {
+        const c = document.createElement("canvas");
+        c.width = c.height = size;
+        const ctx = c.getContext("2d");
+        if (bg) {
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, size, size);
+        }
+        const inner = size * (1 - 2 * pad);
+        let dw, dh;
+        if (src.aspect >= 1) {
+          dw = inner;
+          dh = inner / src.aspect;
+        } else {
+          dh = inner;
+          dw = inner * src.aspect;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(src.img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+        return c;
+      }
+
+      const blobOf = (canvas) => new Promise((res) => canvas.toBlob((b) => res(b), "image/png"));
+      const bytesOf = async (blob) => new Uint8Array(await blob.arrayBuffer());
+
+      /* ---------- favicon.ico (PNG-in-ICO, multi-size) ---------- */
+      function buildIco(images) {
+        // images: [{ size, bytes(Uint8Array) }]
+        const count = images.length;
+        const head = new ArrayBuffer(6 + count * 16);
+        const dv = new DataView(head);
+        dv.setUint16(0, 0, true); // reserved
+        dv.setUint16(2, 1, true); // type: icon
+        dv.setUint16(4, count, true);
+        let offset = 6 + count * 16;
+        images.forEach((im, i) => {
+          const e = 6 + i * 16;
+          dv.setUint8(e + 0, im.size >= 256 ? 0 : im.size); // width  (0 == 256)
+          dv.setUint8(e + 1, im.size >= 256 ? 0 : im.size); // height
+          dv.setUint8(e + 2, 0); // palette count
+          dv.setUint8(e + 3, 0); // reserved
+          dv.setUint16(e + 4, 1, true); // color planes
+          dv.setUint16(e + 6, 32, true); // bits per pixel
+          dv.setUint32(e + 8, im.bytes.length, true); // data size
+          dv.setUint32(e + 12, offset, true); // data offset
+          offset += im.bytes.length;
+        });
+        const out = new Uint8Array(offset);
+        out.set(new Uint8Array(head), 0);
+        let pos = 6 + count * 16;
+        images.forEach((im) => {
+          out.set(im.bytes, pos);
+          pos += im.bytes.length;
+        });
+        return new Blob([out], { type: "image/x-icon" });
+      }
+
+      /* ---------- ZIP (STORE method, no dependencies) ---------- */
+      const CRC_TABLE = (() => {
+        const t = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          t[n] = c >>> 0;
+        }
+        return t;
+      })();
+      function crc32(bytes) {
+        let c = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+        return (c ^ 0xffffffff) >>> 0;
+      }
+      // Fixed DOS timestamp (1980-01-01) keeps the archive deterministic.
+      const DOS_DATE = 0x21;
+      function buildZip(entries) {
+        // entries: [{ name, bytes(Uint8Array) }]
+        const enc = new TextEncoder();
+        const locals = [];
+        const central = [];
+        let offset = 0;
+        for (const f of entries) {
+          const nameBytes = enc.encode(f.name);
+          const crc = crc32(f.bytes);
+          const size = f.bytes.length;
+          const lh = new DataView(new ArrayBuffer(30));
+          lh.setUint32(0, 0x04034b50, true);
+          lh.setUint16(4, 20, true); // version needed
+          lh.setUint16(6, 0, true); // flags
+          lh.setUint16(8, 0, true); // method: store
+          lh.setUint16(10, 0, true); // mod time
+          lh.setUint16(12, DOS_DATE, true); // mod date
+          lh.setUint32(14, crc, true);
+          lh.setUint32(18, size, true); // compressed size
+          lh.setUint32(22, size, true); // uncompressed size
+          lh.setUint16(26, nameBytes.length, true);
+          lh.setUint16(28, 0, true); // extra length
+          locals.push(new Uint8Array(lh.buffer), nameBytes, f.bytes);
+
+          const ch = new DataView(new ArrayBuffer(46));
+          ch.setUint32(0, 0x02014b50, true);
+          ch.setUint16(4, 20, true); // version made by
+          ch.setUint16(6, 20, true); // version needed
+          ch.setUint16(8, 0, true);
+          ch.setUint16(10, 0, true); // method: store
+          ch.setUint16(12, 0, true);
+          ch.setUint16(14, DOS_DATE, true);
+          ch.setUint32(16, crc, true);
+          ch.setUint32(20, size, true);
+          ch.setUint32(24, size, true);
+          ch.setUint16(28, nameBytes.length, true);
+          ch.setUint16(30, 0, true); // extra
+          ch.setUint16(32, 0, true); // comment
+          ch.setUint16(34, 0, true); // disk number
+          ch.setUint16(36, 0, true); // internal attrs
+          ch.setUint32(38, 0, true); // external attrs
+          ch.setUint32(42, offset, true); // local header offset
+          central.push(new Uint8Array(ch.buffer), nameBytes);
+          offset += 30 + nameBytes.length + size;
+        }
+        const centralSize = central.reduce((s, a) => s + a.length, 0);
+        const eo = new DataView(new ArrayBuffer(22));
+        eo.setUint32(0, 0x06054b50, true);
+        eo.setUint16(4, 0, true);
+        eo.setUint16(6, 0, true);
+        eo.setUint16(8, entries.length, true);
+        eo.setUint16(10, entries.length, true);
+        eo.setUint32(12, centralSize, true);
+        eo.setUint32(16, offset, true); // central dir offset
+        eo.setUint16(20, 0, true); // comment length
+        return new Blob([...locals, ...central, new Uint8Array(eo.buffer)], {
+          type: "application/zip",
+        });
+      }
+
+      /* ---------- text outputs (head + manifest) ---------- */
+      function normPrefix() {
+        let p = $("prefix").value.trim();
+        if (p === "") return "";
+        if (!p.endsWith("/")) p += "/";
+        return p;
+      }
+      function manifestObj() {
+        const p = normPrefix();
+        const name = $("appname").value.trim() || "My App";
+        return {
+          name,
+          short_name: $("shortname").value.trim() || name,
+          icons: [
+            { src: p + "icon-192.png", type: "image/png", sizes: "192x192" },
+            { src: p + "icon-mask.png", type: "image/png", sizes: "512x512", purpose: "maskable" },
+            { src: p + "icon-512.png", type: "image/png", sizes: "512x512" },
+          ],
+          theme_color: $("theme").value,
+          background_color: $("bg").value,
+          display: "standalone",
+          start_url: p || "/",
+        };
+      }
+      const manifestText = () => JSON.stringify(manifestObj(), null, 2);
+      function headSnippet() {
+        const p = normPrefix();
+        return [
+          `<link rel="icon" href="${p}favicon.ico" sizes="32x32">`,
+          `<link rel="icon" href="${p}icon.svg" type="image/svg+xml">`,
+          `<link rel="apple-touch-icon" href="${p}apple-touch-icon.png">`,
+          `<link rel="manifest" href="${p}manifest.webmanifest">`,
+        ].join("\n");
+      }
+
+      function updateSnippets() {
+        const manifest = manifestText();
+        $("headcode").textContent = headSnippet();
+        $("manifestcode").textContent = manifest;
+        // Keep the downloadable manifest in sync when only text fields change.
+        const cur = state.files.get("manifest.webmanifest");
+        if (cur) {
+          cur.blob = new Blob([manifest], { type: "application/manifest+json" });
+        }
+        scheduleSave();
+      }
+
+      /* ---------- error helpers ---------- */
+      function showError(msg) {
+        const el = $("err");
+        el.textContent = msg;
+        el.hidden = false;
+      }
+      function clearError() {
+        $("err").hidden = true;
+      }
+
+      /* ---------- generate every asset ---------- */
+      let busy = false;
+      let queued = false;
+      async function generate() {
+        if (busy) {
+          queued = true;
+          return;
+        }
+        busy = true;
+        clearError();
+
+        let src;
+        try {
+          src = await loadSvgImage(state.svg);
+        } catch {
+          // Bad SVG: leave the previous preview/thumbnails (and their object
+          // URLs) in place so the screen doesn't break.
+          busy = false;
+          showError("이 SVG를 불러올 수 없습니다. 올바른 SVG 파일인지 확인하세요.");
+          return;
+        }
+
+        // SVG is good — now it's safe to retire the previous render's URLs.
+        state.urls.forEach((u) => URL.revokeObjectURL(u));
+        state.urls = [];
+
+        const iconBg = $("iconBg").value;
+        const applePad = +$("pad").value / 180;
+        const png = (size, opts) => blobOf(drawIcon(src, size, opts));
+
+        // The PNG encodes are independent — rasterize them concurrently.
+        const [f16, f32, apple, i192, i512, mask] = await Promise.all([
+          png(16, { pad: 0 }),
+          png(32, { pad: 0 }),
+          png(180, { bg: iconBg, pad: applePad }),
+          png(192, { pad: 0 }),
+          png(512, { pad: 0 }),
+          png(512, { bg: iconBg, pad: 0.2 }),
+        ]);
+        const [b16, b32] = await Promise.all([bytesOf(f16), bytesOf(f32)]);
+        const ico = buildIco([
+          { size: 16, bytes: b16 },
+          { size: 32, bytes: b32 },
+        ]);
+        const svgBlob = new Blob([state.svg], { type: "image/svg+xml" });
+
+        // Each entry is self-describing: `thumb` is the blob to preview, or
+        // `glyph` for files with no raster preview. renderAssets() reads these
+        // directly, so it never special-cases a filename.
+        const files = new Map();
+        files.set("favicon.ico", { blob: ico, dim: "16 + 32", thumb: f32 });
+        files.set("icon.svg", { blob: svgBlob, dim: "vector", thumb: svgBlob });
+        files.set("apple-touch-icon.png", { blob: apple, dim: "180 × 180", thumb: apple });
+        files.set("icon-192.png", { blob: i192, dim: "192 × 192", thumb: i192 });
+        files.set("icon-512.png", { blob: i512, dim: "512 × 512", thumb: i512 });
+        files.set("icon-mask.png", { blob: mask, dim: "512 maskable", thumb: mask });
+        // manifest.webmanifest blob is built/refreshed by updateSnippets() below.
+        files.set("manifest.webmanifest", { blob: null, dim: "JSON", glyph: "{ }" });
+        state.files = files;
+
+        URL.revokeObjectURL(src.url); // bitmap is decoded; URL no longer needed
+        setPreview(svgBlob);
+        renderAssets();
+        updateSnippets();
+
+        busy = false;
+        if (queued) {
+          queued = false;
+          generate();
+        }
+      }
+
+      function setPreview(svgBlob) {
+        const url = URL.createObjectURL(svgBlob);
+        state.urls.push(url);
+        const pv = $("pv");
+        pv.src = url;
+        pv.hidden = false;
+        $("pvhint").textContent = "Replace the SVG";
+      }
+
+      function renderAssets() {
+        const wrap = $("assets");
+        wrap.innerHTML = "";
+        for (const [name, f] of state.files) {
+          const card = document.createElement("div");
+          card.className = "asset";
+
+          const thumb = document.createElement("div");
+          thumb.className = "thumb";
+          if (f.glyph) {
+            const g = document.createElement("span");
+            g.className = "glyph";
+            g.textContent = f.glyph;
+            thumb.appendChild(g);
+          } else {
+            thumb.classList.add("checker");
+            const url = URL.createObjectURL(f.thumb);
+            state.urls.push(url);
+            const im = document.createElement("img");
+            im.src = url;
+            im.alt = name;
+            thumb.appendChild(im);
+          }
+
+          const nm = document.createElement("div");
+          nm.className = "name";
+          nm.textContent = name;
+          const dm = document.createElement("div");
+          dm.className = "dim";
+          dm.textContent = f.dim;
+
+          const btn = document.createElement("button");
+          btn.className = "btn dl";
+          btn.type = "button";
+          btn.dataset.name = name;
+          btn.textContent = "Download";
+
+          card.append(thumb, nm, dm, btn);
+          wrap.appendChild(card);
+        }
+        $("count").textContent = `${state.files.size} files ready`;
+      }
+
+      /* ---------- downloads ---------- */
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      $("assets").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-name]");
+        if (!btn) return;
+        const f = state.files.get(btn.dataset.name);
+        if (f) downloadBlob(f.blob, btn.dataset.name);
+      });
+
+      $("zip").addEventListener("click", async () => {
+        if (!state.files.size) return;
+        const btn = $("zip");
+        const prev = btn.textContent;
+        btn.textContent = "Packing…";
+        const entries = [];
+        for (const [name, f] of state.files) entries.push({ name, bytes: await bytesOf(f.blob) });
+        downloadBlob(buildZip(entries), "favicons.zip");
+        btn.textContent = prev;
+      });
+
+      /* ---------- input handling (file / drop / paste) ---------- */
+      const looksLikeSvg = (text) => /<svg[\s>]/i.test(text);
+      function loadSvgText(text) {
+        if (!looksLikeSvg(text)) {
+          showError("SVG 내용을 찾을 수 없습니다.");
+          return;
+        }
+        state.svg = text;
+        generate();
+      }
+      function readFile(file) {
+        const r = new FileReader();
+        r.onload = () => loadSvgText(String(r.result));
+        r.onerror = () => showError("파일을 읽지 못했습니다.");
+        r.readAsText(file);
+      }
+
+      const dz = $("dz");
+      dz.addEventListener("click", () => $("file").click());
+      dz.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          $("file").click();
+        }
+      });
+      $("file").addEventListener("change", () => {
+        const f = $("file").files[0];
+        if (f) readFile(f);
+      });
+      dz.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dz.classList.add("drag");
+      });
+      dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+      dz.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dz.classList.remove("drag");
+        const f = e.dataTransfer.files[0];
+        if (f) readFile(f);
+      });
+      window.addEventListener("paste", (e) => {
+        // Don't hijack paste while the user is editing a text field.
+        const t = e.target;
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+        const items = e.clipboardData ? e.clipboardData.items : [];
+        for (const it of items) {
+          if (it.kind === "file") {
+            const f = it.getAsFile();
+            if (f && /svg/i.test(f.type)) {
+              readFile(f);
+              return;
+            }
+          }
+        }
+        const text = e.clipboardData ? e.clipboardData.getData("text") : "";
+        if (text && looksLikeSvg(text)) loadSvgText(text);
+      });
+
+      /* ---------- reactivity ---------- */
+      let timer;
+      const scheduleGenerate = () => {
+        clearTimeout(timer);
+        timer = setTimeout(generate, 120);
+      };
+      // Image-affecting controls re-rasterize; text-only controls just re-emit text.
+      ["iconBg", "pad"].forEach((id) => $(id).addEventListener("input", scheduleGenerate));
+      ["appname", "shortname", "theme", "bg", "prefix"].forEach((id) =>
+        $(id).addEventListener("input", updateSnippets),
+      );
+      $("pad").addEventListener("input", () => ($("padval").textContent = $("pad").value + "px"));
+
+      wireCopy("copyhead", headSnippet);
+      wireCopy("copymanifest", manifestText);
+
+      /* ---------- persistence ---------- */
+      const LS = "html-toolkit:favicon-generator";
+      function save() {
+        try {
+          localStorage.setItem(
+            LS,
+            JSON.stringify({
+              svg: state.svg,
+              appname: $("appname").value,
+              shortname: $("shortname").value,
+              theme: $("theme").value,
+              bg: $("bg").value,
+              iconBg: $("iconBg").value,
+              pad: $("pad").value,
+              prefix: $("prefix").value,
+            }),
+          );
+        } catch {
+          /* storage unavailable under file:// — ignore */
+        }
+      }
+      // Debounced so typing in a text field doesn't re-serialize the whole SVG
+      // to localStorage on every keystroke.
+      let saveTimer;
+      function scheduleSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(save, 300);
+      }
+      function load() {
+        let s = null;
+        try {
+          s = JSON.parse(localStorage.getItem(LS) || "null");
+        } catch {
+          s = null;
+        }
+        if (!s) return;
+        const setVal = (id, v) => {
+          if (v != null) $(id).value = v;
+        };
+        if (s.svg) state.svg = s.svg;
+        setVal("appname", s.appname);
+        setVal("shortname", s.shortname);
+        setVal("theme", s.theme);
+        setVal("bg", s.bg);
+        setVal("iconBg", s.iconBg);
+        setVal("pad", s.pad);
+        setVal("prefix", s.prefix);
+      }
+
+      load();
+      $("padval").textContent = $("pad").value + "px";
+      generate();
+    </script>
+  </body>
+</html>

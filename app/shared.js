@@ -63,6 +63,14 @@ window.TOOLS = [
     tag: "css",
     blurb: "Tune a CSS box-shadow with live preview and copy-ready output.",
   },
+  {
+    slug: "favicon-generator",
+    name: "Favicon Generator",
+    href: "app/favicon-generator.html",
+    tag: "web",
+    blurb:
+      "Upload one SVG → get favicon.ico, apple-touch-icon, PWA icons & manifest, plus a ready-to-paste head snippet.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
