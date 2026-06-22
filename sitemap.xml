@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Add a <url> entry when a new tool is added to window.TOOLS. If you fork to another origin, update every <loc> (see README). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://toolkit.twentyquad.com/</loc>
+    <lastmod>2026-06-22</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://toolkit.twentyquad.com/app/text-diff.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolkit.twentyquad.com/app/color-contrast.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolkit.twentyquad.com/app/box-shadow.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolkit.twentyquad.com/app/favicon-generator.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <priority>0.8</priority>
+  </url>
+</urlset>

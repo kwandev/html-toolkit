@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="toolkit — single-file tools">
+  <rect width="1200" height="630" fill="#ffffff"/>
+  <rect x="0" y="618" width="1200" height="12" fill="#2e64ea"/>
+
+  <!-- prompt mark (same glyph as favicon.svg) -->
+  <svg x="96" y="231" width="168" height="168" viewBox="0 0 100 100">
+    <g fill="none" stroke="#2e64ea" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M32 36 L50 50 L32 64"/>
+      <path d="M55 64 H75"/>
+    </g>
+  </svg>
+
+  <text x="280" y="214" font-family="monospace" font-size="29" font-weight="600" letter-spacing="1" fill="#6b7280">// single-file tools · no build · no sign-up</text>
+  <text x="276" y="352" font-family="monospace" font-size="122" font-weight="700" fill="#14181f">toolkit</text>
+  <text x="280" y="436" font-family="sans-serif" font-size="36" fill="#4b5563">Tools for work, design, and everyday life.</text>
+</svg>

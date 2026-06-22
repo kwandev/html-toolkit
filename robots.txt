@@ -1,0 +1,5 @@
+# Allow-all + sitemap. If you fork to another origin, update it here and in sitemap.xml / each HTML's canonical+OG (see README).
+User-agent: *
+Allow: /
+
+Sitemap: https://toolkit.twentyquad.com/sitemap.xml

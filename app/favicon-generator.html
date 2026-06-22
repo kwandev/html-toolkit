@@ -8,6 +8,40 @@
       name="description"
       content="Upload one SVG and get the modern favicon set — favicon.ico, apple-touch-icon, PWA icons, and a web manifest — plus a ready-to-paste <head> snippet. All in your browser."
     />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/favicon-generator.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="Favicon Generator — toolkit" />
+    <meta
+      property="og:description"
+      content="Upload one SVG and get the modern favicon set — favicon.ico, apple-touch-icon, PWA icons, and a web manifest — plus a ready-to-paste <head> snippet. All in your browser."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/favicon-generator.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Favicon Generator — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Upload one SVG and get the modern favicon set — favicon.ico, apple-touch-icon, PWA icons, and a web manifest — plus a ready-to-paste <head> snippet. All in your browser."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
     <style>
       /* 공유 디자인 시스템 */
       :root {
