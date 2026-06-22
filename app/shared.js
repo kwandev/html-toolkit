@@ -41,6 +41,30 @@ function setTheme(mode) {
 }
 applyTheme(getTheme());
 
+// Analytics — GA4 only. 프로덕션 호스트에서만 발화(file://·localhost·포크는 자동 제외).
+// G-... 는 공개 클라이언트 키라 커밋 무방; 가드는 비밀유지가 아니라 데이터 위생용.
+// 설계: docs/analytics-plan.md
+try {
+  const ANALYTICS_HOSTS = ["toolkit.twentyquad.com"];
+  if (ANALYTICS_HOSTS.includes(location.hostname)) {
+    const GA_ID = "G-2FQNYW4GCD";
+    const s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () {
+      dataLayer.push(arguments);
+    };
+    gtag("js", new Date());
+    gtag("config", GA_ID, {
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+      anonymize_ip: true,
+    });
+  }
+} catch {}
+
 window.TOOLS = [
   {
     slug: "text-diff",
