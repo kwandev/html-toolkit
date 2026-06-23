@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Character Counter — toolkit</title>
+    <meta
+      name="description"
+      content="Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/char-counter.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="Character Counter — toolkit" />
+    <meta
+      property="og:description"
+      content="Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/char-counter.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Character Counter — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 920px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .input-panel {
+        display: grid;
+        gap: 12px;
+      }
+      #text {
+        font: inherit;
+        width: 100%;
+        min-height: 200px;
+        resize: vertical;
+        padding: 14px;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        line-height: 1.6;
+      }
+      .input-bar {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      /* stat cards */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 12px 14px;
+      }
+      .stat .num {
+        font-family: var(--font-mono);
+        font-size: 1.5rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      .stat .lbl {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .stat .sub {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      .note {
+        font-size: 0.84rem;
+        color: var(--muted);
+        margin: 0;
+      }
+      .note + .note {
+        margin-top: 6px;
+      }
+      .note b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .warn {
+        color: #e5484d;
+      }
+
+      h2.section {
+        font-size: 0.82rem;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 4px;
+      }
+
+      /* SNS limit rows */
+      .limits {
+        display: grid;
+        gap: 10px;
+      }
+      .limit {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 12px;
+        align-items: baseline;
+      }
+      .limit .name {
+        font-weight: 540;
+      }
+      .limit .badge {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 5px;
+        margin-left: 6px;
+        white-space: nowrap;
+      }
+      .limit .count {
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted);
+      }
+      .limit .track {
+        grid-column: 1 / -1;
+        height: 6px;
+        background: var(--surface-2);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .limit .fill {
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 0.15s;
+      }
+      .limit.over .count {
+        color: #e5484d;
+      }
+      .limit.over .fill {
+        background: #e5484d;
+      }
+      .limit.over .name::after {
+        content: " · over limit";
+        color: #e5484d;
+        font-weight: 400;
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="char-counter">
+      <div class="wrap">
+        <div class="input-panel panel">
+          <div class="field">
+            <label for="text">input</label>
+            <textarea id="text" placeholder="Type or paste text here…" autofocus></textarea>
+          </div>
+          <div class="input-bar">
+            <button class="btn" id="clear" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="stats" id="stats">
+            <div class="stat">
+              <div class="num" id="s-chars">0</div>
+              <div class="lbl">characters</div>
+            </div>
+            <div class="stat">
+              <div class="num" id="s-nospace">0</div>
+              <div class="lbl">no spaces</div>
+            </div>
+            <div class="stat">
+              <div class="num" id="s-words">0</div>
+              <div class="lbl">words</div>
+            </div>
+            <div class="stat">
+              <div class="num" id="s-lines">0</div>
+              <div class="lbl">lines</div>
+            </div>
+            <div class="stat">
+              <div class="num" id="s-utf8">0</div>
+              <div class="lbl">bytes · UTF-8</div>
+            </div>
+            <div class="stat">
+              <div class="num" id="s-euc">0</div>
+              <div class="lbl">bytes · EUC-KR</div>
+              <div class="sub" id="s-euc-warn"></div>
+            </div>
+          </div>
+          <hr style="border: none; border-top: 1px solid var(--line); margin: 16px 0" />
+          <p class="note">
+            <b>UTF-8</b> stores ASCII as 1 byte, Korean as 3 bytes, most emoji as 4.
+            <b>EUC-KR</b> stores ASCII as 1 byte and Korean/Hanja as 2 bytes, but can't represent
+            emoji and many other characters.
+          </p>
+          <p class="note">
+            <b>UTF-8</b>은 영문·숫자 1바이트, 한글 3바이트, 대부분의 이모지는 4바이트.
+            <b>EUC-KR</b>은 영문 1바이트, 한글·한자 2바이트지만 이모지 등 다수 문자는 표현하지
+            못합니다.
+          </p>
+        </div>
+
+        <div class="panel">
+          <h2 class="section">SNS character limits</h2>
+          <div class="limits" id="limits"></div>
+          <p class="note" style="margin-top: 14px">
+            Counts use Unicode code points. <b>X</b> counts CJK characters (Korean / Chinese /
+            Japanese) as 2 and a URL as 23; Premium raises its limit to 25,000. Limits change often
+            — treat these as a guide.
+          </p>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const STORE_KEY = "char-counter:text";
+
+      // localStorage can throw or be unavailable under file:// or when site data
+      // is blocked — guard it so counting still works (mirrors shared.js).
+      const store = {
+        get: (k) => {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+        remove: (k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        },
+      };
+
+      // X / twitter-text default "weighted" ranges: chars in these count as 2.
+      // ponytail: full twitter-text CJK range table — the correct set, not a Hangul-only shortcut.
+      const CJK_RANGES = [
+        [0x1100, 0x115f],
+        [0x2e80, 0x303e],
+        [0x3041, 0x33ff],
+        [0x3400, 0x4dbf],
+        [0x4e00, 0x9fff],
+        [0xa000, 0xa4cf],
+        [0xac00, 0xd7a3],
+        [0xf900, 0xfaff],
+        [0xfe30, 0xfe4f],
+        [0xff00, 0xff60],
+        [0xffe0, 0xffe6],
+        [0x20000, 0x2fa1f],
+      ];
+      const isCjk = (cp) => CJK_RANGES.some(([lo, hi]) => cp >= lo && cp <= hi);
+
+      const ENC = new TextEncoder(); // reused across keystrokes
+
+      function measure(text) {
+        const cps = [...text]; // iterate by code point (emoji = 1, not 2)
+        let euc = 0,
+          eucUnsupported = 0,
+          xWeighted = 0;
+        for (const ch of cps) {
+          const cp = ch.codePointAt(0);
+          if (cp <= 0x7f) euc += 1;
+          else {
+            euc += 2; // ponytail: 1/2-byte heuristic — exact for ASCII+Hangul+Hanja
+            if (cp > 0xffff) eucUnsupported++; // astral (emoji…) can't be EUC-KR encoded
+          }
+          xWeighted += isCjk(cp) ? 2 : 1;
+        }
+        return {
+          chars: cps.length,
+          noSpace: [...text.replace(/\s/g, "")].length,
+          words: text.trim() ? text.trim().split(/\s+/).length : 0,
+          lines: text ? text.split("\n").length : 0,
+          utf8: ENC.encode(text).length, // native, exact
+          euc,
+          eucUnsupported,
+          xWeighted,
+        };
+      }
+
+      // ascending by limit → most restrictive (most likely to overflow) first
+      const LIMITS = [
+        { name: "YouTube title", limit: 100 },
+        { name: "Instagram bio", limit: 150 },
+        { name: "X / Twitter", limit: 280, cjk: true },
+        { name: "Bluesky", limit: 300 },
+        { name: "Reddit title", limit: 300 },
+        { name: "Threads", limit: 500 },
+        { name: "Mastodon", limit: 500 },
+        { name: "Instagram caption", limit: 2200 },
+        { name: "LinkedIn post", limit: 3000 },
+        { name: "TikTok caption", limit: 4000 },
+        { name: "YouTube description", limit: 5000 },
+        { name: "카카오스토리", limit: 5000 },
+        { name: "Facebook post", limit: 63206 },
+      ];
+
+      // build the limit rows once; keep refs for fast updates
+      const rows = LIMITS.map((p) => {
+        const el = document.createElement("div");
+        el.className = "limit";
+        el.innerHTML =
+          `<div><span class="name">${p.name}</span>` +
+          (p.cjk ? `<span class="badge">CJK ×2</span>` : "") +
+          `</div><div class="count"></div><div class="track"><div class="fill"></div></div>`;
+        $("limits").appendChild(el);
+        return { p, el, count: el.querySelector(".count"), fill: el.querySelector(".fill") };
+      });
+
+      const fmt = (n) => n.toLocaleString("en-US");
+
+      function render(text) {
+        const m = measure(text);
+        $("s-chars").textContent = fmt(m.chars);
+        $("s-nospace").textContent = fmt(m.noSpace);
+        $("s-words").textContent = fmt(m.words);
+        $("s-lines").textContent = fmt(m.lines);
+        $("s-utf8").textContent = fmt(m.utf8);
+        $("s-euc").textContent = fmt(m.euc);
+        $("s-euc-warn").innerHTML = m.eucUnsupported
+          ? `<span class="warn">⚠ ${m.eucUnsupported} char(s) not in EUC-KR</span>`
+          : "";
+
+        for (const r of rows) {
+          const used = r.p.cjk ? m.xWeighted : m.chars;
+          const over = used > r.p.limit;
+          r.el.classList.toggle("over", over);
+          r.count.textContent = `${fmt(used)} / ${fmt(r.p.limit)}`;
+          r.fill.style.width = Math.min(100, (used / r.p.limit) * 100) + "%";
+        }
+      }
+
+      const ta = $("text");
+      ta.value = store.get(STORE_KEY) || "";
+      ta.addEventListener("input", () => {
+        store.set(STORE_KEY, ta.value);
+        render(ta.value);
+      });
+      $("clear").addEventListener("click", () => {
+        ta.value = "";
+        store.remove(STORE_KEY);
+        render("");
+        ta.focus();
+      });
+      render(ta.value);
+
+      // self-check (silent unless it breaks) — guards the byte/weight logic
+      function demo() {
+        const m = measure("AB가😀");
+        console.assert(m.chars === 4, "chars", m.chars);
+        console.assert(m.utf8 === 9, "utf8", m.utf8); // A1 B1 가3 😀4
+        console.assert(m.euc === 6 && m.eucUnsupported === 1, "euc", m.euc, m.eucUnsupported); // A1 B1 가2 😀2(✗)
+        console.assert(m.xWeighted === 5, "xWeighted", m.xWeighted); // A1 B1 가2 😀1
+      }
+      demo();
+    </script>
+  </body>
+</html>

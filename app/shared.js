@@ -95,6 +95,14 @@ window.TOOLS = [
     blurb:
       "Upload one SVG → get favicon.ico, apple-touch-icon, PWA icons & manifest, plus a ready-to-paste head snippet.",
   },
+  {
+    slug: "char-counter",
+    name: "Character Counter",
+    href: "app/char-counter.html",
+    tag: "text",
+    blurb:
+      "Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
