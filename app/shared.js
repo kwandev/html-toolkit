@@ -103,6 +103,14 @@ window.TOOLS = [
     blurb:
       "Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms.",
   },
+  {
+    slug: "pdf-organizer",
+    name: "PDF Organizer",
+    href: "app/pdf-organizer.html",
+    tag: "pdf",
+    blurb:
+      "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 

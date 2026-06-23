@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF Organizer — toolkit</title>
+    <meta
+      name="description"
+      content="Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/pdf-organizer.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="PDF Organizer — toolkit" />
+    <meta
+      property="og:description"
+      content="Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/pdf-organizer.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PDF Organizer — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+
+    <!-- 외부 라이브러리: 버전 고정 CDN (이 저장소 최초 CDN 사용 — CLAUDE.md 규칙 허용) -->
+    <!-- pdf.js v3 UMD: 페이지 수·썸네일 렌더 (v4+는 ESM이라 file:// classic-script 비호환) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- pdf-lib: 순서/회전/삭제/병합 반영해 새 PDF 조립·저장 -->
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 1100px;
+        display: grid;
+        gap: 20px;
+      }
+
+      /* dropzone */
+      .drop {
+        display: grid;
+        place-items: center;
+        gap: 10px;
+        text-align: center;
+        padding: clamp(28px, 7vw, 56px);
+        border: 2px dashed var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .drop:hover,
+      .drop.over {
+        border-color: var(--accent);
+        background: var(--accent-2);
+      }
+      .drop strong {
+        font-size: 1.05rem;
+      }
+      .drop .hint {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      /* summary + toolbar */
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        justify-content: space-between;
+        background: color-mix(in oklab, var(--surface) 78%, transparent);
+        backdrop-filter: blur(8px);
+      }
+      /* stick below the shell header on tablet/desktop; stays in place on mobile */
+      @media (min-width: 768px) {
+        .bar {
+          position: sticky;
+          top: 68px; /* shell header height */
+          z-index: 1;
+        }
+      }
+      .summary {
+        font-family: var(--font-mono);
+        font-size: 0.92rem;
+      }
+      .summary b {
+        font-size: 1.15rem;
+      }
+      .tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .btn--sm {
+        padding: 0.45em 0.8em;
+        font-size: 0.88rem;
+      }
+
+      /* page grid */
+      .pages {
+        display: grid;
+        /* responsive, but never more than 5 columns (14px gap × 4 = 56px) */
+        grid-template-columns: repeat(auto-fill, minmax(max(160px, (100% - 56px) / 5), 1fr));
+        gap: 14px;
+        position: relative;
+      }
+      /* insertion bar shown between cards while dragging */
+      .ins {
+        position: absolute;
+        width: 3px;
+        border-radius: 2px;
+        background: var(--accent);
+        pointer-events: none;
+        display: none;
+        z-index: 2;
+      }
+      .card {
+        position: relative;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 8px;
+        display: grid;
+        gap: 8px;
+        cursor: grab;
+        transition:
+          border-color 0.15s,
+          opacity 0.15s,
+          transform 0.05s;
+      }
+      .card:active {
+        cursor: grabbing;
+      }
+      .card.dragging {
+        opacity: 0.4;
+      }
+      .thumb {
+        aspect-ratio: 1 / 1.3;
+        display: grid;
+        place-items: center;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: zoom-in;
+      }
+      .thumb canvas,
+      .thumb img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .thumb .spin {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .title {
+        font-family: var(--font-mono);
+        font-size: 0.88rem;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        min-width: 0;
+        font-family: var(--font-mono);
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+      .badge {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .acts {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 4px;
+      }
+      .icon-btn {
+        font: inherit;
+        font-size: 1.05rem;
+        line-height: 1;
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .icon-btn svg {
+        width: 17px;
+        height: 17px;
+        display: block;
+      }
+      .icon-btn:hover {
+        border-color: var(--accent);
+      }
+      .icon-btn.del:hover {
+        border-color: #d33;
+        color: #d33;
+      }
+
+      .err {
+        color: #d33;
+        font-size: 0.9rem;
+      }
+
+      /* fullscreen page preview */
+      .viewer {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: rgba(0, 0, 0, 0.72);
+        cursor: zoom-out;
+      }
+      .viewer canvas {
+        max-width: 100%;
+        max-height: 100%;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      }
+      .viewer .vclose {
+        position: absolute;
+        top: 16px;
+        right: 18px;
+        font-size: 2rem;
+        line-height: 1;
+        color: #fff;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      .viewer .vspin {
+        color: #fff;
+        font-family: var(--font-mono);
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="pdf-organizer">
+      <div class="wrap">
+        <!-- 1) drop / pick -->
+        <div class="drop" id="drop" role="button" tabindex="0">
+          <strong>Drop PDF files here</strong>
+          <span class="hint"
+            >or click to choose · drag to reorder · nothing leaves your browser</span
+          >
+          <input id="file" type="file" accept="application/pdf" multiple hidden />
+        </div>
+        <p class="err" id="err"></p>
+
+        <!-- 2) summary + 3) toolbar -->
+        <div class="panel bar hidden" id="bar">
+          <div class="summary" id="summary"></div>
+          <div class="tools">
+            <button class="btn btn--sm" id="add" type="button">+ Add PDF</button>
+            <button class="btn btn--sm" id="reverse" type="button">Reverse</button>
+            <button class="btn btn--sm" id="reset" type="button" title="Undo edits — restore the original pages, order and rotation (keeps your files)">
+              Reset
+            </button>
+            <button class="btn btn--sm" id="clear" type="button" title="Remove every loaded PDF and start from an empty tool">
+              Clear all
+            </button>
+            <button class="btn btn--sm btn--accent" id="save" type="button">Download PDF</button>
+          </div>
+        </div>
+
+        <!-- 4) page grid -->
+        <div class="pages" id="pages"></div>
+      </div>
+    </app-shell>
+
+    <script>
+      const { PDFDocument, degrees } = PDFLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        drop: $("drop"),
+        file: $("file"),
+        err: $("err"),
+        bar: $("bar"),
+        summary: $("summary"),
+        pages: $("pages"),
+      };
+
+      // state — docs keyed by id, pages is the ordered output list (see plan data model)
+      const docs = new Map(); // id -> { name, libDoc, pdfjsDoc }
+      let pages = []; // { uid, docId, srcIndex, rotation, thumb }
+      let uid = 0;
+      let docSeq = 0;
+      let original = []; // every page in as-loaded order — the target for "Reset"
+      let dirty = false; // any reorder / delete / rotate / zoom → warn before leaving
+
+      // read the grid gap from CSS so the insertion marker stays in sync with .pages
+      const GAP = parseFloat(getComputedStyle(els.pages).columnGap) || 14;
+      const insEl = document.createElement("div"); // the "|" insertion marker
+      insEl.className = "ins";
+
+      const setErr = (msg) => {
+        els.err.textContent = msg || "";
+      };
+
+      async function addFiles(fileList) {
+        setErr("");
+        const files = [...fileList].filter(
+          (f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf",
+        );
+        if (!files.length) {
+          setErr("No PDF files found in the selection.");
+          return;
+        }
+        for (const file of files) {
+          try {
+            await addOnePdf(file);
+          } catch (e) {
+            console.error(e);
+            setErr(`Couldn't read "${file.name}". It may be password-protected or corrupted.`);
+          }
+        }
+        render();
+      }
+
+      async function addOnePdf(file) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        // pdf-lib for assembly; ignoreEncryption lets us copy from lightly-protected PDFs
+        const libDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const docId = "d" + docSeq++;
+
+        // pdf.js for page count + thumbnails + the click-to-zoom viewer
+        // (fresh copy: pdf.js transfers/detaches the buffer)
+        const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+        docs.set(docId, { name: file.name, libDoc, pdfjsDoc: pdf });
+        const baseItems = [];
+        for (let i = 0; i < pdf.numPages; i++) {
+          const item = { uid: uid++, docId, srcIndex: i, rotation: 0, thumb: null };
+          pages.push(item);
+          original.push(item); // remember the as-loaded set & order for "Reset"
+          baseItems.push(item);
+        }
+        render(); // show cards immediately, thumbnails fill in async
+        for (const item of baseItems) await refreshThumb(item);
+      }
+
+      // ponytail: render every page at small scale up front. Ceiling: hundreds of pages
+      // is slow — upgrade path is IntersectionObserver lazy render.
+      async function renderThumb(pdf, pageNum, rotation = 0) {
+        const page = await pdf.getPage(pageNum);
+        const total = (page.rotate + rotation) % 360; // intrinsic + user rotation, baked in
+        const base = page.getViewport({ scale: 1, rotation: total });
+        const scale = 160 / base.width;
+        const viewport = page.getViewport({ scale, rotation: total });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+        return canvas.toDataURL("image/png");
+      }
+
+      // (re)render one page's thumbnail at its current rotation. _rev guards against a
+      // stale async render overwriting a newer one (fast repeated rotates / load races).
+      async function refreshThumb(p) {
+        const doc = docs.get(p.docId);
+        if (!doc) return;
+        const rev = (p._rev = (p._rev || 0) + 1);
+        const thumb = await renderThumb(doc.pdfjsDoc, p.srcIndex + 1, p.rotation);
+        if (p._rev !== rev || !docs.has(p.docId)) return;
+        p.thumb = thumb;
+        updateThumb(p);
+      }
+
+      // ---- rendering ----
+      function render() {
+        const has = pages.length > 0;
+        els.bar.classList.toggle("hidden", !has);
+        if (has) {
+          els.summary.innerHTML = `<b>${pages.length}</b> page${pages.length === 1 ? "" : "s"} · ${docs.size} file${docs.size === 1 ? "" : "s"}`;
+        }
+        if (!docs.size) {
+          els.pages.innerHTML = "";
+          return;
+        }
+        els.pages.innerHTML = "";
+        pages.forEach((p, idx) => els.pages.appendChild(card(p, idx)));
+        els.pages.appendChild(insEl); // insertion bar lives inside the grid container
+      }
+
+      function card(p, idx) {
+        const el = document.createElement("div");
+        el.className = "card";
+        el.draggable = true;
+        el.dataset.idx = idx;
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+        thumb.dataset.uid = p.uid;
+        thumb.title = "click to enlarge";
+        thumb.setAttribute("role", "button");
+        thumb.tabIndex = 0;
+        thumb.setAttribute("aria-label", "enlarge page");
+        thumb.appendChild(thumbNode(p));
+        thumb.addEventListener("click", () => openViewer(p));
+        thumb.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openViewer(p);
+          }
+        });
+
+        // PDF title on its own line (only useful when more than one file is loaded)
+        const name = docs.get(p.docId).name.replace(/\.pdf$/i, "");
+        let title;
+        if (docs.size > 1) {
+          title = document.createElement("div");
+          title.className = "title";
+          title.textContent = name;
+          title.title = name;
+        }
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = `p.${p.srcIndex + 1}`;
+        badge.title = `original page ${p.srcIndex + 1}`;
+        const acts = document.createElement("div");
+        acts.className = "acts";
+        acts.append(
+          iconBtn("↻", "rotate 90°", () => rotate(p)),
+          iconBtn(TRASH_SVG, "delete page", () => del(p), "del"),
+        );
+        meta.append(badge, acts);
+
+        const nav = document.createElement("div");
+        nav.className = "acts";
+        nav.style.justifyContent = "space-between";
+        const up = iconBtn("↑", "move up", () => move(idx, idx - 1));
+        const down = iconBtn("↓", "move down", () => move(idx, idx + 1));
+        up.disabled = idx === 0;
+        down.disabled = idx === pages.length - 1;
+        nav.append(up, down);
+
+        el.append(thumb);
+        if (title) el.append(title);
+        el.append(meta, nav);
+        wireDrag(el);
+        return el;
+      }
+
+      const TRASH_SVG =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/><path d="M10 11v6M14 11v6"/></svg>';
+
+      function iconBtn(glyph, title, onClick, extra) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "icon-btn" + (extra ? " " + extra : "");
+        if (glyph.trimStart().startsWith("<svg")) b.innerHTML = glyph;
+        else b.textContent = glyph;
+        b.title = title;
+        b.setAttribute("aria-label", title);
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onClick();
+        });
+        return b;
+      }
+
+      // the thumbnail's inner node: the rendered image, or a "rendering…" placeholder
+      function thumbNode(p) {
+        if (!p.thumb) {
+          const span = document.createElement("span");
+          span.className = "spin";
+          span.textContent = "rendering…";
+          return span;
+        }
+        const img = document.createElement("img");
+        img.src = p.thumb;
+        return img;
+      }
+
+      // repaint just the one thumbnail when it finishes (avoids full re-render churn)
+      function updateThumb(p) {
+        const slot = els.pages.querySelector(`.thumb[data-uid="${p.uid}"]`);
+        if (slot) slot.replaceChildren(thumbNode(p));
+      }
+
+      // ---- mutations ----
+      function rotate(p) {
+        p.rotation = (p.rotation + 90) % 360;
+        dirty = true;
+        refreshThumb(p); // re-render so the rotated thumbnail fits the box (no clipping)
+      }
+      function del(p) {
+        pages = pages.filter((x) => x !== p);
+        dirty = true;
+        render();
+      }
+      function move(from, to) {
+        if (to < 0 || to >= pages.length) return;
+        const [it] = pages.splice(from, 1);
+        pages.splice(to, 0, it);
+        dirty = true;
+        render();
+      }
+      function reverse() {
+        pages.reverse();
+        dirty = true;
+        render();
+      }
+      // back to as-loaded: original set + order, every rotation cleared, deletions undone
+      function reset() {
+        pages = original.slice();
+        const stale = [];
+        for (const p of pages) {
+          if (p.rotation !== 0 || !p.thumb) stale.push(p); // thumb no longer matches rotation 0
+          p.rotation = 0;
+        }
+        dirty = false; // identical to the freshly-loaded state
+        render();
+        stale.forEach(refreshThumb);
+      }
+      function clearAll() {
+        docs.forEach((d) => d.pdfjsDoc?.destroy?.());
+        docs.clear();
+        pages = [];
+        original = [];
+        dirty = false; // nothing left to lose
+        closeViewer();
+        setErr("");
+        render();
+      }
+
+      // ---- click-to-zoom viewer (re-renders the page at full size via pdf.js) ----
+      let viewerEl = null;
+      async function openViewer(p) {
+        closeViewer();
+        const doc = docs.get(p.docId);
+        if (!doc || !doc.pdfjsDoc) return;
+        dirty = true;
+        const ov = document.createElement("div");
+        ov.className = "viewer";
+        ov.innerHTML =
+          '<button class="vclose" aria-label="close">×</button><span class="vspin">loading…</span>';
+        ov.addEventListener("click", closeViewer);
+        document.body.appendChild(ov);
+        viewerEl = ov;
+        try {
+          const page = await doc.pdfjsDoc.getPage(p.srcIndex + 1);
+          const rotation = (page.rotate + p.rotation) % 360; // intrinsic + user rotation
+          const unit = page.getViewport({ scale: 1, rotation });
+          const scale = Math.min(
+            (window.innerWidth - 48) / unit.width,
+            (window.innerHeight - 48) / unit.height,
+            4,
+          );
+          const viewport = page.getViewport({ scale, rotation });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+          if (viewerEl !== ov) return; // closed while rendering
+          ov.querySelector(".vspin")?.remove();
+          ov.appendChild(canvas);
+        } catch (e) {
+          console.error(e);
+          closeViewer();
+        }
+      }
+      function closeViewer() {
+        if (viewerEl) {
+          viewerEl.remove();
+          viewerEl = null;
+        }
+      }
+
+      // ---- native HTML5 drag-and-drop reordering (no library) ----
+      // shows a "|" marker in the gap between pages (incl. row ends) at the drop point
+      let dragIdx = null;
+      let dropTo = null;
+      let pagesRect = null; // cached for the drag session (layout is stable while dragging)
+      // rect-based so it's correct even though cards are slotted into the shadow <main>
+      function showInsBar(r, before) {
+        const x = (before ? r.left - GAP / 2 : r.right + GAP / 2) - pagesRect.left;
+        insEl.style.left = Math.max(0, x - 1) + "px";
+        insEl.style.top = r.top - pagesRect.top + "px";
+        insEl.style.height = r.height + "px";
+        insEl.style.display = "block";
+      }
+      function wireDrag(el) {
+        el.addEventListener("dragstart", (e) => {
+          dragIdx = +el.dataset.idx;
+          pagesRect = els.pages.getBoundingClientRect();
+          el.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", String(dragIdx)); // Firefox needs setData to start a drag
+        });
+        el.addEventListener("dragend", () => {
+          dragIdx = null;
+          dropTo = null;
+          pagesRect = null;
+          insEl.style.display = "none";
+          el.classList.remove("dragging");
+        });
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (dragIdx === null) return;
+          const idx = +el.dataset.idx;
+          const r = el.getBoundingClientRect();
+          const before = e.clientX < r.left + r.width / 2;
+          showInsBar(r, before);
+          let to = idx + (before ? 0 : 1); // insertion index
+          if (to > dragIdx) to--; // account for the removed item
+          dropTo = to;
+        });
+        el.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (dragIdx === null || dropTo === null) return;
+          const from = dragIdx;
+          const to = dropTo;
+          insEl.style.display = "none";
+          if (to !== from) move(from, to);
+        });
+      }
+
+      // ---- export ----
+      async function save() {
+        if (!pages.length) return;
+        const btn = $("save");
+        btn.disabled = true;
+        btn.textContent = "Building…";
+        try {
+          const out = await PDFDocument.create();
+          for (const p of pages) {
+            const src = docs.get(p.docId).libDoc;
+            const [cp] = await out.copyPages(src, [p.srcIndex]);
+            const baseAngle = src.getPage(p.srcIndex).getRotation().angle;
+            cp.setRotation(degrees((baseAngle + p.rotation) % 360));
+            out.addPage(cp);
+          }
+          const blob = new Blob([await out.save()], { type: "application/pdf" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "organized.pdf";
+          a.click();
+          dirty = false; // work is exported — no need to warn on leave anymore
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } catch (e) {
+          console.error(e);
+          setErr("Failed to build the PDF. See console for details.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Download PDF";
+        }
+      }
+
+      // ---- wiring ----
+      els.drop.addEventListener("click", () => els.file.click());
+      els.drop.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          els.file.click();
+        }
+      });
+      els.file.addEventListener("change", () => {
+        addFiles(els.file.files);
+        els.file.value = "";
+      });
+      $("add").addEventListener("click", () => els.file.click());
+      $("reverse").addEventListener("click", reverse);
+      $("reset").addEventListener("click", reset);
+      $("clear").addEventListener("click", clearAll);
+      $("save").addEventListener("click", save);
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeViewer();
+      });
+      // warn on back / reload / close once the user has changed anything (native confirm)
+      window.addEventListener("beforeunload", (e) => {
+        if (!dirty) return;
+        e.preventDefault();
+        e.returnValue = "x"; // non-empty for older browsers; text is ignored by modern ones
+      });
+
+      // drag PDF files onto the whole page
+      ["dragenter", "dragover"].forEach((ev) =>
+        document.addEventListener(ev, (e) => {
+          if (e.dataTransfer?.types?.includes("Files")) {
+            e.preventDefault();
+            els.drop.classList.add("over");
+          }
+        }),
+      );
+      ["dragleave", "drop"].forEach((ev) =>
+        document.addEventListener(ev, (e) => {
+          if (ev === "drop") e.preventDefault();
+          if (e.target === document.documentElement || ev === "drop")
+            els.drop.classList.remove("over");
+        }),
+      );
+      document.addEventListener("drop", (e) => {
+        if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+      });
+    </script>
+  </body>
+</html>
