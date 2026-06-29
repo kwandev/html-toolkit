@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JSON Formatter — toolkit</title>
+    <meta
+      name="description"
+      content="Paste JSON to pretty-print or minify it, and browse it as a collapsible tree. Runs entirely in your browser — nothing is uploaded."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/json-formatter.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="JSON Formatter — toolkit" />
+    <meta
+      property="og:description"
+      content="Paste JSON to pretty-print or minify it, and browse it as a collapsible tree. Runs entirely in your browser — nothing is uploaded."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/json-formatter.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="JSON Formatter — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Paste JSON to pretty-print or minify it, and browse it as a collapsible tree. Runs entirely in your browser — nothing is uploaded."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      /* syntax colors — defined on :root so the slotted (light-DOM) tree can read them */
+      :root {
+        --t-str: #2b8a3e;
+        --t-num: #1971c2;
+        --t-bool: #9c36b5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --t-str: #69db7c;
+          --t-num: #74c0fc;
+          --t-bool: #eebefa;
+        }
+      }
+      :root[data-theme="dark"] {
+        --t-str: #69db7c;
+        --t-num: #74c0fc;
+        --t-bool: #eebefa;
+      }
+
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 1080px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .input-panel {
+        display: grid;
+        gap: 12px;
+      }
+      #json {
+        font-family: var(--font-mono);
+        font-size: 0.88rem;
+        width: 100%;
+        min-height: 180px;
+        resize: vertical;
+        padding: 14px;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        line-height: 1.55;
+        tab-size: 2;
+        white-space: pre;
+        overflow-wrap: normal;
+      }
+      .input-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .status {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--t-str); /* green that adapts to light/dark, same as tree strings */
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      /* output toolbar */
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .btn--sm {
+        padding: 0.4em 0.8em;
+        font-size: 0.85rem;
+      }
+      .tabs {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+      }
+      .tab {
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 560;
+        padding: 0.4em 0.9em;
+        border: 0;
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .tab + .tab {
+        border-left: 1px solid var(--line);
+      }
+      .tab[aria-selected="true"] {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .ctl {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .field-inline .lbl {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      #indent {
+        font: inherit;
+        font-size: 0.85rem;
+        padding: 0.35em 0.5em;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+
+      /* expand/collapse only apply to the tree view */
+      .output-panel.mode-text .tree-only {
+        display: none;
+      }
+
+      .err {
+        font-family: var(--font-mono);
+        font-size: 0.84rem;
+        color: #e5484d;
+        background: color-mix(in oklab, #e5484d 10%, transparent);
+        border: 1px solid color-mix(in oklab, #e5484d 35%, transparent);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .empty {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .pane {
+        margin: 0;
+        max-height: 70vh;
+        overflow: auto;
+      }
+      .text {
+        font-size: 1rem;
+        line-height: 1.6;
+        white-space: pre-wrap; /* wrap long lines (minify = one long line) instead of overflowing */
+        overflow-wrap: anywhere; /* break tokens with no spaces too */
+        tab-size: 2;
+      }
+
+      /* --- collapsible tree --- */
+      .tree {
+        font-family: var(--font-mono);
+        font-size: 1rem;
+        line-height: 1.7;
+      }
+      .tree .row,
+      .tree summary {
+        padding-left: 1em; /* align primitives + close bracket under summary text */
+      }
+      .tree summary {
+        padding-left: 0;
+        cursor: pointer;
+        list-style: none;
+      }
+      .tree summary::-webkit-details-marker {
+        display: none;
+      }
+      .tree summary::before {
+        content: "▸";
+        display: inline-block;
+        width: 1em;
+        color: var(--muted);
+      }
+      .tree details[open] > summary::before {
+        content: "▾";
+      }
+      .tree details[open] > summary .preview {
+        display: none;
+      }
+      .tree .children {
+        margin-left: 0.5em;
+        padding-left: 0.9em;
+        border-left: 1px solid var(--line);
+      }
+      .tree .key {
+        color: var(--accent);
+      }
+      .tree .string {
+        color: var(--t-str);
+        word-break: break-word;
+      }
+      .tree .number {
+        color: var(--t-num);
+      }
+      .tree .boolean {
+        color: var(--t-bool);
+      }
+      .tree .null,
+      .tree .punct {
+        color: var(--muted);
+      }
+      .tree .meta {
+        color: var(--muted);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="json-formatter">
+      <div class="wrap">
+        <div class="input-panel panel">
+          <div class="field">
+            <label for="json">input</label>
+            <textarea
+              id="json"
+              placeholder='Paste JSON here…  e.g. {"hello": "world", "items": [1, 2, 3]}'
+              autofocus
+              spellcheck="false"
+            ></textarea>
+          </div>
+          <div class="input-bar">
+            <span id="status" class="status"></span>
+            <div class="actions">
+              <button class="btn btn--sm" id="sample" type="button">Sample</button>
+              <button class="btn btn--sm" id="clear" type="button">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel output-panel mode-tree" id="output">
+          <div class="toolbar">
+            <div class="tabs" role="tablist" aria-label="output view">
+              <button
+                class="tab"
+                id="tab-tree"
+                type="button"
+                data-pane="tree"
+                role="tab"
+                aria-controls="pane-tree"
+                aria-selected="true"
+              >
+                Tree
+              </button>
+              <button
+                class="tab"
+                id="tab-text"
+                type="button"
+                data-pane="text"
+                role="tab"
+                aria-controls="pane-text"
+                aria-selected="false"
+              >
+                Text
+              </button>
+            </div>
+            <div class="spacer"></div>
+            <div class="ctl tree-only">
+              <button class="btn btn--sm" id="expand" type="button">Expand all</button>
+              <button class="btn btn--sm" id="collapse" type="button">Collapse all</button>
+            </div>
+            <label class="ctl field-inline">
+              <span class="mono lbl">indent</span>
+              <select id="indent">
+                <option value="2">2 spaces</option>
+                <option value="4">4 spaces</option>
+                <option value="tab">Tab</option>
+                <option value="min">Minify</option>
+              </select>
+            </label>
+            <button class="btn btn--accent btn--sm" id="copy" type="button">Copy</button>
+          </div>
+
+          <div id="err" class="err" hidden></div>
+          <p id="empty" class="empty">Paste JSON above to format and explore it.</p>
+          <div id="pane-tree" class="pane tree" role="tabpanel" aria-labelledby="tab-tree"></div>
+          <pre
+            id="pane-text"
+            class="pane text mono"
+            role="tabpanel"
+            aria-labelledby="tab-text"
+            hidden
+          ></pre>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const STORE_KEY = "json-formatter:text";
+      const INDENT_KEY = "json-formatter:indent";
+
+      // localStorage can throw or be unavailable under file:// or when site data
+      // is blocked — guard it so the tool still works (mirrors shared.js).
+      const store = {
+        get: (k) => {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+        remove: (k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        },
+      };
+
+      // ---- tree builder (DOM only — never innerHTML, so user JSON can't inject markup) ----
+      const text = (s) => document.createTextNode(s);
+      function span(cls, content) {
+        const e = document.createElement("span");
+        e.className = cls;
+        e.textContent = content;
+        return e;
+      }
+      const typeOf = (v) => (v === null ? "null" : Array.isArray(v) ? "array" : typeof v); // object|array|string|number|boolean|null
+
+      // JSON.stringify quotes + escapes a string exactly as JSON does → safe, faithful display
+      const valueSpan = (v) => {
+        const t = typeOf(v);
+        return span(t, t === "string" ? JSON.stringify(v) : String(v));
+      };
+      const keyLabel = (k) => span("key", JSON.stringify(k));
+      const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+      // a single non-expandable row: optional "key": prefix, a value node, optional trailing comma
+      function leafRow(key, valueNode, isLast) {
+        const row = document.createElement("div");
+        row.className = "row";
+        if (key !== null) row.append(keyLabel(key), text(": "));
+        row.append(valueNode);
+        if (!isLast) row.append(text(","));
+        return row;
+      }
+
+      // ponytail: naive recursive DOM build — linear in node count. Tens of thousands
+      // of nodes (huge JSON) may lag the render. Add virtual scrolling only if it actually drags.
+      function buildNode(value, key, isLast) {
+        const t = typeOf(value);
+
+        if (t !== "object" && t !== "array") return leafRow(key, valueSpan(value), isLast);
+
+        const isArr = t === "array";
+        const open = isArr ? "[" : "{";
+        const close = isArr ? "]" : "}";
+        const items = isArr ? value.map((v) => [null, v]) : Object.entries(value);
+
+        // empty container → single inline row, no toggle
+        if (items.length === 0) return leafRow(key, span("punct", open + close), isLast);
+
+        const details = document.createElement("details");
+        details.className = "node";
+        details.open = true;
+
+        const summary = document.createElement("summary");
+        if (key !== null) summary.append(keyLabel(key), text(": "));
+        summary.append(span("punct", open));
+        const preview = document.createElement("span");
+        preview.className = "preview";
+        const n = items.length;
+        preview.append(
+          text(" … "),
+          span("meta", plural(n, isArr ? "item" : "key")),
+          text(" "),
+          span("punct", close),
+        );
+        if (!isLast) preview.append(text(","));
+        summary.append(preview);
+        details.append(summary);
+
+        const children = document.createElement("div");
+        children.className = "children";
+        items.forEach(([k, v], i) => children.append(buildNode(v, k, i === n - 1)));
+        details.append(children);
+
+        details.append(leafRow(null, span("punct", close), isLast));
+
+        return details;
+      }
+
+      // ---- formatting ----
+      function indentArg() {
+        const v = $("indent").value;
+        if (v === "tab") return "\t";
+        if (v === "min") return 0;
+        return Number(v);
+      }
+      const rootSummary = (v) => {
+        const t = typeOf(v);
+        if (t === "array") return `array · ${plural(v.length, "item")}`;
+        if (t === "object") return `object · ${plural(Object.keys(v).length, "key")}`;
+        return t;
+      };
+
+      let lastParsed; // cache so changing indent doesn't re-parse
+
+      const treeEl = $("pane-tree");
+      const textEl = $("pane-text");
+
+      function render(src) {
+        lastParsed = undefined;
+        treeEl.replaceChildren();
+        textEl.textContent = "";
+
+        if (!src.trim()) {
+          $("err").hidden = true;
+          $("empty").hidden = false;
+          $("status").textContent = "";
+          return;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(src);
+        } catch (e) {
+          $("err").hidden = false;
+          $("err").textContent = "Invalid JSON: " + e.message;
+          $("empty").hidden = true;
+          $("status").textContent = "";
+          return;
+        }
+
+        lastParsed = parsed;
+        $("err").hidden = true;
+        $("empty").hidden = true;
+        $("status").textContent = "✓ " + rootSummary(parsed);
+        treeEl.append(buildNode(parsed, null, true));
+        textEl.textContent = JSON.stringify(parsed, null, indentArg());
+      }
+
+      function reformatText() {
+        if (lastParsed !== undefined)
+          textEl.textContent = JSON.stringify(lastParsed, null, indentArg());
+      }
+
+      // ---- tabs ----
+      const output = $("output");
+      function showPane(which) {
+        output.classList.toggle("mode-tree", which === "tree");
+        output.classList.toggle("mode-text", which === "text");
+        for (const t of document.querySelectorAll(".tab"))
+          t.setAttribute("aria-selected", t.dataset.pane === which);
+        treeEl.hidden = which !== "tree";
+        textEl.hidden = which !== "text";
+      }
+      for (const t of document.querySelectorAll(".tab"))
+        t.addEventListener("click", () => showPane(t.dataset.pane));
+
+      // ---- expand / collapse all ----
+      const setAllOpen = (open) =>
+        treeEl.querySelectorAll("details").forEach((d) => (d.open = open));
+      $("expand").addEventListener("click", () => setAllOpen(true));
+      $("collapse").addEventListener("click", () => setAllOpen(false));
+
+      // ---- copy (always copies the formatted text, the most useful payload) ----
+      $("copy").addEventListener("click", async () => {
+        if (lastParsed === undefined) return;
+        const btn = $("copy");
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(lastParsed, null, indentArg()));
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy"), 1200);
+        } catch {
+          btn.textContent = "Copy failed";
+          setTimeout(() => (btn.textContent = "Copy"), 1200);
+        }
+      });
+
+      // ---- input wiring + autosave ----
+      const ta = $("json");
+      const indent = $("indent");
+      ta.value = store.get(STORE_KEY) || "";
+      indent.value = store.get(INDENT_KEY) || "2";
+
+      // debounce typing: rebuilding the whole tree on every keystroke lags on big JSON.
+      // Buttons (Clear/Sample) still call render() directly for instant feedback.
+      let renderTimer;
+      ta.addEventListener("input", () => {
+        store.set(STORE_KEY, ta.value);
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(() => render(ta.value), 150);
+      });
+      indent.addEventListener("change", () => {
+        store.set(INDENT_KEY, indent.value);
+        reformatText();
+      });
+      $("clear").addEventListener("click", () => {
+        ta.value = "";
+        store.remove(STORE_KEY);
+        render("");
+        ta.focus();
+      });
+      $("sample").addEventListener("click", () => {
+        ta.value = JSON.stringify(
+          {
+            name: "toolkit",
+            version: 1.4,
+            singleFile: true,
+            tags: ["css", "json", "text"],
+            author: { name: "kwan", url: "https://toolkit.twentyquad.com" },
+            deps: null,
+          },
+          null,
+          2,
+        );
+        store.set(STORE_KEY, ta.value);
+        render(ta.value);
+      });
+
+      render(ta.value);
+
+      // self-check (silent unless it breaks) — guards the formatter + tree logic
+      function demo() {
+        const sample = '{"a":1,"b":[true,null,"x"],"c":{},"d":[]}';
+        const obj = JSON.parse(sample);
+        // round-trip: pretty-print parses back to the same value
+        console.assert(
+          JSON.stringify(JSON.parse(JSON.stringify(obj, null, 2))) === JSON.stringify(obj),
+          "roundtrip",
+        );
+        const node = buildNode(obj, null, true);
+        console.assert(node.tagName === "DETAILS", "root is details");
+        // descendant <details> = just the "b" array; empty "c"/"d" render as rows, not details
+        console.assert(
+          node.querySelectorAll("details").length === 1,
+          "container count",
+          node.querySelectorAll("details").length,
+        );
+        // XSS: a string value containing markup renders as text, not an element
+        const xss = buildNode({ k: "<img src=x onerror=alert(1)>" }, null, true);
+        console.assert(xss.querySelectorAll("img").length === 0, "no markup injected");
+        console.assert(xss.querySelector(".string").textContent.includes("<img"), "shown as text");
+      }
+      demo();
+    </script>
+  </body>
+</html>

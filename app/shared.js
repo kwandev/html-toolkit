@@ -111,6 +111,14 @@ window.TOOLS = [
     blurb:
       "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
   },
+  {
+    slug: "json-formatter",
+    name: "JSON Formatter",
+    href: "app/json-formatter.html",
+    tag: "data",
+    blurb:
+      "Paste JSON → pretty-print or minify, and browse it as a collapsible tree. Runs entirely in your browser.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
