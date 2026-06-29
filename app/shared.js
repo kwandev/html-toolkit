@@ -119,6 +119,14 @@ window.TOOLS = [
     blurb:
       "Paste JSON → pretty-print or minify, and browse it as a collapsible tree. Runs entirely in your browser.",
   },
+  {
+    slug: "image-compressor",
+    name: "Image Compressor",
+    href: "app/image-compressor.html",
+    tag: "image",
+    blurb:
+      "Compress JPG / PNG / WebP in your browser — batch, quality slider, before/after sizes. Nothing is uploaded.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
