@@ -67,11 +67,51 @@ try {
 
 window.TOOLS = [
   {
+    slug: "image-compressor",
+    name: "Image Compressor",
+    href: "app/image-compressor.html",
+    tag: "image",
+    blurb:
+      "Compress JPG / PNG / WebP in your browser — batch, quality slider, before/after sizes. Nothing is uploaded.",
+  },
+  {
+    slug: "json-formatter",
+    name: "JSON Formatter",
+    href: "app/json-formatter.html",
+    tag: "data",
+    blurb:
+      "Paste JSON → pretty-print or minify, and browse it as a collapsible tree. Runs entirely in your browser.",
+  },
+  {
+    slug: "pdf-organizer",
+    name: "PDF Organizer",
+    href: "app/pdf-organizer.html",
+    tag: "pdf",
+    blurb:
+      "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
+  },
+  {
+    slug: "favicon-generator",
+    name: "Favicon Generator",
+    href: "app/favicon-generator.html",
+    tag: "web",
+    blurb:
+      "Upload one SVG → get favicon.ico, apple-touch-icon, PWA icons & manifest, plus a ready-to-paste head snippet.",
+  },
+  {
     slug: "text-diff",
     name: "Text Diff",
     href: "app/text-diff.html",
     tag: "text",
     blurb: "Compare two blocks of text line by line - any format, original formatting preserved.",
+  },
+  {
+    slug: "char-counter",
+    name: "Character Counter",
+    href: "app/char-counter.html",
+    tag: "text",
+    blurb:
+      "Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms.",
   },
   {
     slug: "color-contrast",
@@ -86,46 +126,6 @@ window.TOOLS = [
     href: "app/box-shadow.html",
     tag: "css",
     blurb: "Tune a CSS box-shadow with live preview and copy-ready output.",
-  },
-  {
-    slug: "favicon-generator",
-    name: "Favicon Generator",
-    href: "app/favicon-generator.html",
-    tag: "web",
-    blurb:
-      "Upload one SVG → get favicon.ico, apple-touch-icon, PWA icons & manifest, plus a ready-to-paste head snippet.",
-  },
-  {
-    slug: "char-counter",
-    name: "Character Counter",
-    href: "app/char-counter.html",
-    tag: "text",
-    blurb:
-      "Count characters, words, lines and bytes (UTF-8 / EUC-KR), with live limits for major SNS platforms.",
-  },
-  {
-    slug: "pdf-organizer",
-    name: "PDF Organizer",
-    href: "app/pdf-organizer.html",
-    tag: "pdf",
-    blurb:
-      "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
-  },
-  {
-    slug: "json-formatter",
-    name: "JSON Formatter",
-    href: "app/json-formatter.html",
-    tag: "data",
-    blurb:
-      "Paste JSON → pretty-print or minify, and browse it as a collapsible tree. Runs entirely in your browser.",
-  },
-  {
-    slug: "image-compressor",
-    name: "Image Compressor",
-    href: "app/image-compressor.html",
-    tag: "image",
-    blurb:
-      "Compress JPG / PNG / WebP in your browser — batch, quality slider, before/after sizes. Nothing is uploaded.",
   },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
