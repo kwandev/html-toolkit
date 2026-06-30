@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cron Explainer — toolkit</title>
+    <meta
+      name="description"
+      content="Paste a cron expression to read it in plain language and preview the next run times. Runs entirely in your browser."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/cron-explainer.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="Cron Explainer — toolkit" />
+    <meta
+      property="og:description"
+      content="Paste a cron expression to read it in plain language and preview the next run times. Runs entirely in your browser."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/cron-explainer.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cron Explainer — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Paste a cron expression to read it in plain language and preview the next run times. Runs entirely in your browser."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <!-- cron → 자연어 설명 (전 로케일 i18n 빌드, 버전 고정 — 설명은 클라이언트 로케일로 표기).
+         다음 실행 시각은 직접 계산. -->
+    <script src="https://cdn.jsdelivr.net/npm/cronstrue@2.59.0/dist/cronstrue-i18n.min.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 820px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .input-panel {
+        display: grid;
+        gap: 14px;
+      }
+      #expr {
+        font-family: var(--font-mono);
+        font-size: 1.15rem;
+        letter-spacing: 0.02em;
+        width: 100%;
+        padding: 14px 16px;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+      }
+      #expr.invalid {
+        border-color: #e5484d;
+      }
+      .input-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .input-bar .hint {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .input-bar .actions {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      /* preset chips */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        font: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 999px;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .chip:hover {
+        border-color: var(--accent);
+      }
+      .chip code {
+        font-size: 0.78rem;
+        color: var(--accent);
+      }
+      .chip .lbl {
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+
+      /* description */
+      .desc {
+        font-size: 1.3rem;
+        font-weight: 640;
+        line-height: 1.35;
+      }
+
+      /* field breakdown */
+      .fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .fld {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 10px;
+        text-align: center;
+      }
+      .fld .v {
+        font-family: var(--font-mono);
+        font-size: 1.15rem;
+        font-weight: 600;
+        word-break: break-all;
+      }
+      .fld .k {
+        font-family: var(--font-mono);
+        font-size: 0.64rem;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      /* next runs */
+      .runs {
+        display: grid;
+        gap: 8px;
+      }
+      .run {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 10px 14px;
+      }
+      .run .when {
+        font-family: var(--font-mono);
+        font-size: 0.95rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .run .rel {
+        font-size: 0.8rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      h2.section {
+        font-size: 0.82rem;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+
+      .note {
+        font-size: 0.84rem;
+        color: var(--muted);
+        margin: 0;
+      }
+      .note + .note {
+        margin-top: 6px;
+      }
+      .note b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .warn {
+        color: #e5484d;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="cron-explainer">
+      <div class="wrap">
+        <div class="input-panel panel">
+          <h2 class="section" id="expr-label">Expression</h2>
+          <div class="field">
+            <input
+              id="expr"
+              class="mono"
+              type="text"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              placeholder="*/5 * * * *"
+              aria-labelledby="expr-label"
+              autofocus
+            />
+          </div>
+          <div class="input-bar">
+            <span class="hint"
+              >minute · hour · day(month) · month · day(week) &nbsp;(6 fields → leading
+              second)</span
+            >
+            <div class="actions">
+              <button class="btn" id="copy" type="button">Copy</button>
+              <button class="btn" id="clear" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="chips" id="chips"></div>
+        </div>
+
+        <div class="panel" id="result">
+          <h2 class="section">Meaning</h2>
+          <div class="desc" id="desc"></div>
+          <div class="fields" id="fields"></div>
+        </div>
+
+        <div class="panel hidden" id="error-panel">
+          <p class="note warn" id="error-en"></p>
+        </div>
+
+        <div class="panel" id="runs-panel">
+          <h2 class="section">Next runs</h2>
+          <div class="runs" id="runs"></div>
+          <p class="note" id="tz-note" style="margin-top: 14px"></p>
+        </div>
+
+        <div class="panel">
+          <p class="note">
+            <b>Syntax</b> — <code>*</code> any, <code>,</code> list, <code>-</code> range,
+            <code>*/n</code> step. Day-of-week <code>0</code> or <code>7</code> = Sunday; names like
+            <code>MON</code> / <code>JAN</code> work too. Times use your local timezone.
+          </p>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const STORE_KEY = "cron-explainer:expr";
+
+      // localStorage can throw under file:// or when site data is blocked — guard it
+      // so the tool still works (mirrors char-counter / shared.js).
+      const store = {
+        get: (k) => {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+        remove: (k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        },
+      };
+
+      // 자주 쓰는 표현식. cronstrue가 설명을 만들어주므로 칩에는 표현식 + 짧은 라벨만.
+      const PRESETS = [
+        ["* * * * *", "every minute"],
+        ["*/5 * * * *", "every 5 min"],
+        ["*/15 * * * *", "every 15 min"],
+        ["0 * * * *", "hourly"],
+        ["0 */6 * * *", "every 6 hours"],
+        ["0 0 * * *", "daily midnight"],
+        ["0 9 * * 1-5", "weekdays 9am"],
+        ["0 9 * * 1", "Mondays 9am"],
+        ["30 2 * * 0", "Sundays 02:30"],
+        ["0 0 * * 6,0", "weekends midnight"],
+        ["0 0 1 * *", "1st of month"],
+        ["0 0 1 1 *", "Jan 1st yearly"],
+      ];
+
+      const MONTHS = {
+        JAN: 1,
+        FEB: 2,
+        MAR: 3,
+        APR: 4,
+        MAY: 5,
+        JUN: 6,
+        JUL: 7,
+        AUG: 8,
+        SEP: 9,
+        OCT: 10,
+        NOV: 11,
+        DEC: 12,
+      };
+      const DOWS = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+
+      // field labels keyed by field count: 5 = classic, 6 = leading seconds,
+      // 7 = Quartz (leading seconds + trailing year). cronstrue describes 7-field
+      // expressions even though our scheduler doesn't run them, so label all three.
+      const FIELD_LABELS = {
+        5: ["minute", "hour", "day(M)", "month", "day(W)"],
+        6: ["second", "minute", "hour", "day(M)", "month", "day(W)"],
+        7: ["second", "minute", "hour", "day(M)", "month", "day(W)", "year"],
+      };
+
+      function nameToNum(tok, names) {
+        if (/^\d+$/.test(tok)) return parseInt(tok, 10);
+        // names may be null (numeric-only field) — `?:` so a name token still throws
+        // rather than short-circuiting to null and slipping past the undefined guard.
+        const n = names ? names[tok.toUpperCase()] : undefined;
+        if (n === undefined) throw new Error("unknown token: " + tok);
+        return n;
+      }
+
+      // one cron field → Set of allowed integers. Throws on anything malformed.
+      function parseField(spec, min, max, names) {
+        if (spec === "?") spec = "*"; // Quartz "no specific value" → treat as any
+        const set = new Set();
+        for (const part of spec.split(",")) {
+          if (!part) throw new Error("empty value");
+          const segs = part.split("/");
+          if (segs.length > 2) throw new Error("bad step: " + part); // at most one "/"
+          const [range, stepStr] = segs;
+          if (stepStr !== undefined && !/^\d+$/.test(stepStr)) throw new Error("bad step: " + part);
+          const step = stepStr === undefined ? 1 : parseInt(stepStr, 10);
+          if (step < 1) throw new Error("bad step: " + part);
+          let lo, hi;
+          if (range === "*") {
+            lo = min;
+            hi = max;
+          } else {
+            const b = range.split("-");
+            lo = nameToNum(b[0], names);
+            if (b.length > 1)
+              hi = nameToNum(b[1], names); // "a-b" → explicit range
+            else if (stepStr === undefined)
+              hi = lo; // bare "a" → single value
+            else hi = max; // "a/n" → a..max stepping by n
+          }
+          if (lo < min || hi > max || lo > hi) throw new Error("out of range: " + part);
+          for (let i = lo; i <= hi; i += step) set.add(i);
+        }
+        return set;
+      }
+
+      // Compute the next `count` run times (local time). cronstrue only describes —
+      // this does the scheduling. We walk DAY by day (not minute by minute) and emit
+      // only the matching times within each matching day, bounded by a calendar
+      // horizon rather than a step count. So impossible dates (e.g. Feb 30) just
+      // exhaust the day loop in a few ms instead of grinding millions of minutes,
+      // and far-future / sparse runs (yearly, Feb 29) are still found.
+      function nextRuns(expr, count) {
+        const f = expr.trim().split(/\s+/);
+        if (f.length !== 5 && f.length !== 6) throw new Error("cron must have 5 or 6 fields");
+        const secondMode = f.length === 6;
+        let i = 0;
+        const secSet = secondMode ? parseField(f[i++], 0, 59, null) : new Set([0]);
+        const minSet = parseField(f[i++], 0, 59, null);
+        const hourSet = parseField(f[i++], 0, 23, null);
+        const domSpec = f[i];
+        const domSet = parseField(f[i++], 1, 31, null);
+        const monSet = parseField(f[i++], 1, 12, MONTHS);
+        const dowSpec = f[i];
+        const dowSet = parseField(f[i++], 0, 7, DOWS);
+        if (dowSet.has(7)) dowSet.add(0); // 7 and 0 both mean Sunday
+
+        // Vixie cron: when BOTH day-of-month and day-of-week are restricted, a day
+        // matches if EITHER does; otherwise both must match (the "*" one always does).
+        const domR = domSpec !== "*" && domSpec !== "?";
+        const dowR = dowSpec !== "*" && dowSpec !== "?";
+
+        // ascending so emitted times are chronological and we can stop at `count`
+        const asc = (set) => [...set].sort((a, b) => a - b);
+        const hours = asc(hourSet),
+          mins = asc(minSet),
+          secs = asc(secSet);
+
+        const out = [];
+        const start = new Date();
+        start.setMilliseconds(0);
+        if (secondMode) start.setSeconds(start.getSeconds() + 1);
+        else {
+          start.setSeconds(0);
+          start.setMinutes(start.getMinutes() + 1);
+        }
+
+        // ponytail: ~100y horizon; the day loop runs ≤ ~36.5k cheap iterations even
+        // when nothing ever matches — always sub-millisecond, no main-thread freeze.
+        const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const horizon = new Date(day);
+        horizon.setFullYear(horizon.getFullYear() + 100);
+        while (day < horizon && out.length < count) {
+          if (monSet.has(day.getMonth() + 1)) {
+            const domMatch = domSet.has(day.getDate());
+            const dowMatch = dowSet.has(day.getDay());
+            if (domR && dowR ? domMatch || dowMatch : domMatch && dowMatch) {
+              const y = day.getFullYear(),
+                mo = day.getMonth(),
+                dt = day.getDate();
+              outer: for (const h of hours)
+                for (const mi of mins)
+                  for (const se of secs) {
+                    const t = new Date(y, mo, dt, h, mi, se);
+                    if (t >= start) {
+                      out.push(t);
+                      if (out.length >= count) break outer;
+                    }
+                  }
+            }
+          }
+          day.setDate(day.getDate() + 1);
+        }
+        return out;
+      }
+
+      const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+
+      // Map the client's locale to a cronstrue locale code so the plain-language
+      // description matches the user's region. cronstrue silently falls back to
+      // English for any locale it doesn't bundle. Computed once — navigator.language
+      // doesn't change during a session.
+      const CRON_LOCALE = (() => {
+        const [base, region] = (navigator.language || "en").toLowerCase().split("-");
+        if (base === "zh") return region === "tw" || region === "hk" ? "zh_TW" : "zh_CN";
+        if (base === "pt") return region === "br" ? "pt_BR" : "pt_PT";
+        return base; // ko, ja, fr, de, es, … (2-letter); unknown → en
+      })();
+
+      function fmtAbs(date, secondMode) {
+        const opt = {
+          weekday: "short",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        };
+        if (secondMode) opt.second = "2-digit";
+        // runtime default locale → dates render in the user's own locale, matching
+        // their timezone (the "Times shown in <TZ>" note). Only dates localize; the
+        // rest of the UI stays English.
+        return date.toLocaleString(undefined, opt);
+      }
+
+      function fmtRel(date) {
+        // round each tier straight from the total seconds — no compounding error
+        const s = Math.round((date - new Date()) / 1000);
+        if (s < 60) return `in ${s}s`;
+        if (s < 3600) return `in ${Math.round(s / 60)}m`;
+        if (s < 172800) return `in ${Math.round(s / 3600)}h`;
+        return `in ${Math.round(s / 86400)}d`;
+      }
+
+      function render(expr) {
+        expr = expr.trim();
+        const ok = $("result");
+        const errPanel = $("error-panel");
+        const runsPanel = $("runs-panel");
+
+        // Reset to a clean slate; each path below only reveals what it owns.
+        ok.classList.add("hidden");
+        errPanel.classList.add("hidden");
+        runsPanel.classList.add("hidden");
+        $("expr").classList.remove("invalid");
+        if (!expr) return;
+
+        let desc;
+        try {
+          desc = cronstrue.toString(expr, {
+            throwExceptionOnParseError: true,
+            use24HourTimeFormat: true,
+            locale: CRON_LOCALE,
+          });
+        } catch (e) {
+          // cronstrue may throw a string (no .message) — extract robustly, never show "undefined".
+          // It also prefixes its messages with "Error: " — strip that for a clean read.
+          const raw = (e && e.message) || (typeof e === "string" ? e : "");
+          const msg = raw.replace(/^Error:\s*/i, "");
+          const tail = msg ? ": " + msg : ". Check each field and its range.";
+          $("expr").classList.add("invalid");
+          $("error-en").textContent = "Couldn't parse this cron expression" + tail;
+          errPanel.classList.remove("hidden");
+          return;
+        }
+
+        // cronstrue parsed it → always show the description + field breakdown.
+        const f = expr.split(/\s+/);
+        $("desc").textContent = desc;
+        const labels = FIELD_LABELS[f.length] || [];
+        $("fields").innerHTML = f
+          .map(
+            (v, idx) =>
+              `<div class="fld"><div class="v">${v.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</div><div class="k">${labels[idx] || ""}</div></div>`,
+          )
+          .join("");
+        ok.classList.remove("hidden");
+
+        // Next run times are a best-effort extra: our scheduler supports standard
+        // 5/6-field cron, but cronstrue also describes syntax we don't schedule
+        // (7-field year, L/W/#). If scheduling fails, keep the description and just
+        // note that run times are unavailable — never hide the primary result.
+        let runs;
+        try {
+          runs = nextRuns(expr, 5);
+        } catch {
+          runs = null;
+        }
+        if (runs === null) {
+          $("runs").innerHTML =
+            `<p class="note">Next run times aren't available for this expression.</p>`;
+          $("tz-note").innerHTML = "";
+        } else {
+          $("runs").innerHTML = runs.length
+            ? runs
+                .map(
+                  (d) =>
+                    `<div class="run"><span class="when">${fmtAbs(d, f.length === 6)}</span><span class="rel">${fmtRel(d)}</span></div>`,
+                )
+                .join("")
+            : `<p class="note">No upcoming run found within the next 100 years.</p>`;
+          $("tz-note").innerHTML = `Times shown in <b>${TZ}</b>.`;
+        }
+        runsPanel.classList.remove("hidden");
+      }
+
+      // build preset chips
+      $("chips").innerHTML = PRESETS.map(
+        ([expr, lbl]) =>
+          `<button class="chip" type="button" data-expr="${expr}"><code>${expr}</code><span class="lbl">${lbl}</span></button>`,
+      ).join("");
+      $("chips").addEventListener("click", (e) => {
+        const btn = e.target.closest(".chip");
+        if (!btn) return;
+        input.value = btn.dataset.expr;
+        commit();
+      });
+
+      const input = $("expr");
+
+      function setHash(url) {
+        // Safari throttles replaceState to ~100/30s and throws past that — never
+        // let a failed URL update block rendering.
+        try {
+          history.replaceState(null, "", url);
+        } catch {}
+      }
+      // persist the trimmed value so localStorage and the shareable hash agree;
+      // render the raw value (render trims internally, and we don't want to move
+      // the caret by rewriting input.value mid-typing).
+      function commit() {
+        const v = input.value;
+        const t = v.trim();
+        store.set(STORE_KEY, t);
+        setHash(t ? "#" + encodeURIComponent(t) : " ");
+        render(v);
+      }
+
+      input.addEventListener("input", commit);
+      $("clear").addEventListener("click", () => {
+        input.value = "";
+        store.remove(STORE_KEY);
+        setHash(" ");
+        render("");
+        input.focus();
+      });
+
+      // clipboard API with execCommand fallback (file:// / non-secure contexts)
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+      $("copy").addEventListener("click", async () => {
+        const btn = $("copy");
+        const expr = input.value.trim();
+        if (!expr) return;
+        const ok = await copyText(expr);
+        btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+        setTimeout(() => (btn.textContent = "Copy"), 1200);
+      });
+
+      // initial state: URL hash > localStorage > default sample.
+      // decodeURIComponent throws on a malformed hash (e.g. a truncated "%E0") —
+      // guard it so a bad shared link still boots to a usable default.
+      let fromHash = "";
+      try {
+        fromHash = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+      } catch {
+        fromHash = "";
+      }
+      input.value = fromHash || store.get(STORE_KEY) || "*/5 * * * *";
+      render(input.value);
+
+      // self-check (silent unless it breaks) — guards the scheduling logic
+      function demo() {
+        const r = nextRuns("*/5 * * * *", 3);
+        console.assert(r.length === 3, "count", r.length);
+        console.assert(r[1] - r[0] === 5 * 60000, "5min gap", r[1] - r[0]);
+        const midnight = nextRuns("0 0 * * *", 1)[0];
+        console.assert(midnight.getHours() === 0 && midnight.getMinutes() === 0, "midnight");
+        const wd = nextRuns("0 9 * * 1-5", 5);
+        console.assert(
+          wd.every((d) => d.getDay() >= 1 && d.getDay() <= 5 && d.getHours() === 9),
+          "weekday 9am",
+        );
+        const wknd = nextRuns("0 0 * * 6,0", 4);
+        console.assert(
+          wknd.every((d) => d.getDay() === 6 || d.getDay() === 0),
+          "weekend",
+        );
+        const sec = nextRuns("*/30 * * * * *", 2);
+        console.assert(sec[1] - sec[0] === 30000, "30s gap", sec[1] - sec[0]);
+        // names + ranges resolve like their numeric form
+        const named = nextRuns("0 9 * * MON-FRI", 3);
+        console.assert(
+          named.every((d) => d.getDay() >= 1 && d.getDay() <= 5),
+          "named weekday",
+        );
+        // impossible date returns [] without scanning (fast, no freeze)
+        console.assert(nextRuns("0 0 30 2 *", 5).length === 0, "feb30 impossible");
+        // far-future 6-field (yearly) is found, not a false "no run"
+        const yearly = nextRuns("0 0 0 1 1 *", 3);
+        console.assert(
+          yearly.length === 3 && yearly.every((d) => d.getMonth() === 0 && d.getDate() === 1),
+          "6-field yearly",
+        );
+        // sparse-but-valid Feb 29 still yields the full count within the horizon
+        const leap = nextRuns("0 0 29 2 *", 5);
+        console.assert(
+          leap.length === 5 && leap.every((d) => d.getMonth() === 1 && d.getDate() === 29),
+          "feb29 x5",
+        );
+        // parser rejects malformed steps instead of silently accepting them
+        for (const bad of ["*/5abc * * * *", "1-5/2/3 * * * *"]) {
+          let threw = false;
+          try {
+            nextRuns(bad, 1);
+          } catch {
+            threw = true;
+          }
+          console.assert(threw, "reject malformed step", bad);
+        }
+      }
+      demo();
+    </script>
+  </body>
+</html>

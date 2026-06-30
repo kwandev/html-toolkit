@@ -75,6 +75,14 @@ window.TOOLS = [
       "Compress JPG / PNG / WebP in your browser — batch, quality slider, before/after sizes. Nothing is uploaded.",
   },
   {
+    slug: "pdf-organizer",
+    name: "PDF Organizer",
+    href: "app/pdf-organizer.html",
+    tag: "pdf",
+    blurb:
+      "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
+  },
+  {
     slug: "json-formatter",
     name: "JSON Formatter",
     href: "app/json-formatter.html",
@@ -83,12 +91,12 @@ window.TOOLS = [
       "Paste JSON → pretty-print or minify, and browse it as a collapsible tree. Runs entirely in your browser.",
   },
   {
-    slug: "pdf-organizer",
-    name: "PDF Organizer",
-    href: "app/pdf-organizer.html",
-    tag: "pdf",
+    slug: "cron-explainer",
+    name: "Cron Explainer",
+    href: "app/cron-explainer.html",
+    tag: "dev",
     blurb:
-      "Count, reorder, rotate and delete PDF pages — or merge several files — by drag-and-drop. Everything runs in your browser; nothing is uploaded.",
+      "Paste a cron expression to read it in plain language and see the next run times. Pure browser, nothing sent.",
   },
   {
     slug: "favicon-generator",
