@@ -161,6 +161,48 @@ TOOLS.forEach((t) => {
   t.href = new URL(t.href, ROOT).href;
 });
 
+// JSON-LD 구조화 데이터를 <head>에 주입.
+// ponytail: JS 주입 — 구조화 데이터 소비자(Google·Bing)는 JS를 렌더링하므로, 11개 파일에
+// 정적 블록을 손으로 넣는 대신 TOOLS를 단일 진실 공급원으로 재사용. no-JS 크롤러까지 노출하려면
+// 각 파일에 인라인할 것. meta 있으면 도구(WebApplication), 없으면 랜딩(WebSite + ItemList).
+function injectJsonLd(meta) {
+  if (document.querySelector('script[type="application/ld+json"][data-toolkit]')) return;
+  const canonical = document.querySelector('link[rel="canonical"]')?.href || location.href;
+  const desc = document.querySelector('meta[name="description"]')?.content || "";
+  const data = meta
+    ? {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: meta.name,
+        description: meta.blurb,
+        url: canonical,
+        applicationCategory: "UtilitiesApplication",
+        operatingSystem: "Any",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        isPartOf: { "@type": "WebSite", name: "toolkit", url: ROOT },
+      }
+    : {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "WebSite", name: "toolkit", url: ROOT, description: desc },
+          {
+            "@type": "ItemList",
+            itemListElement: TOOLS.map((t, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: t.name,
+              url: t.href,
+            })),
+          },
+        ],
+      };
+  const s = document.createElement("script");
+  s.type = "application/ld+json";
+  s.dataset.toolkit = "";
+  s.textContent = JSON.stringify(data);
+  document.head.appendChild(s);
+}
+
 class AppShell extends HTMLElement {
   connectedCallback() {
     const active = this.getAttribute("tool") || "";
@@ -189,6 +231,8 @@ class AppShell extends HTMLElement {
         main { flex: 1; width: 100%; max-width: var(--maxw); margin: 0 auto; padding: var(--pad); }
         .head { margin-bottom: 28px; }
         .head h1 { margin: 4px 0 6px; font-size: clamp(1.5rem, 4vw, 2.1rem); letter-spacing: -0.02em; }
+        /* h1은 각 도구 파일의 라이트 DOM에 정적으로 존재하고 name="tool-title" 슬롯으로 들어옴 (SEO: no-JS 크롤러용). ::slotted로 스타일 */
+        ::slotted(h1) { margin: 4px 0 6px; font-size: clamp(1.5rem, 4vw, 2.1rem); letter-spacing: -0.02em; }
         .head p { margin: 0; color: var(--muted); max-width: 60ch; }
         footer {
           border-top: 1px solid var(--line); padding: 20px var(--pad);
@@ -228,14 +272,14 @@ class AppShell extends HTMLElement {
       <main>
         ${
           meta
-            ? `<div class="head"><div class="eyebrow">// ${meta.tag}</div><h1>${meta.name}</h1><p>${meta.blurb}</p></div>`
+            ? `<div class="head"><div class="eyebrow">// ${meta.tag}</div><slot name="tool-title"><h1>${meta.name}</h1></slot><p>${meta.blurb}</p></div>`
             : ""
         }
         <slot></slot>
       </main>
       <footer>
         <span>built in the open · single-file tools</span>
-        <a href="https://github.com/kwandev/html-tools" target="_blank" rel="noopener">github →</a>
+        <a href="https://github.com/kwandev/html-toolkit" target="_blank" rel="noopener">github →</a>
       </footer>
     `;
 
@@ -251,6 +295,8 @@ class AppShell extends HTMLElement {
       setTheme(b.dataset.mode);
       sync(b.dataset.mode);
     });
+
+    injectJsonLd(meta);
   }
 }
 
