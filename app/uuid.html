@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UUID / Nano ID Generator — toolkit</title>
+    <meta
+      name="description"
+      content="Generate UUID v4 and Nano IDs in bulk — pick length, alphabet and case, copy one or all. Runs entirely in your browser."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta
+      name="theme-color"
+      content="#f6f7f9"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#0b0d11"
+      media="(prefers-color-scheme: dark)"
+    />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/uuid.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="UUID / Nano ID Generator — toolkit" />
+    <meta
+      property="og:description"
+      content="Generate UUID v4 and Nano IDs in bulk — pick length, alphabet and case, copy one or all. Runs entirely in your browser."
+    />
+    <meta
+      property="og:url"
+      content="https://toolkit.twentyquad.com/app/uuid.html"
+    />
+    <meta
+      property="og:image"
+      content="https://toolkit.twentyquad.com/public/og.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="UUID / Nano ID Generator — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Generate UUID v4 and Nano IDs in bulk — pick length, alphabet and case, copy one or all. Runs entirely in your browser."
+    />
+    <meta
+      name="twitter:image"
+      content="https://toolkit.twentyquad.com/public/og.png"
+    />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans:
+          system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo,
+          Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 820px;
+        display: grid;
+        gap: 20px;
+      }
+
+      h2.section {
+        font-size: 0.82rem;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 14px;
+      }
+
+      .options {
+        display: grid;
+        gap: 16px;
+      }
+
+      /* type segmented toggle */
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        width: fit-content;
+      }
+      .seg button {
+        font: inherit;
+        font-weight: 560;
+        padding: 0.55em 1.4em;
+        border: 0;
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      .seg button + button {
+        border-left: 1px solid var(--line);
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 18px;
+      }
+      .row .field {
+        gap: 4px;
+      }
+
+      input[type="number"],
+      input[type="text"].tin {
+        font: inherit;
+        font-family: var(--font-mono);
+        padding: 8px 10px;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+      }
+      input[type="number"] {
+        width: 92px;
+      }
+      input.tin {
+        width: 100%;
+      }
+      input.invalid {
+        border-color: #e5484d;
+      }
+
+      .check {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .check input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
+      }
+
+      .range-field {
+        min-width: 220px;
+        flex: 1;
+      }
+
+      /* alphabet preset chips */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        font: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 999px;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .chip:hover {
+        border-color: var(--accent);
+      }
+      .chip[aria-pressed="true"] {
+        border-color: var(--accent);
+        background: var(--accent-2);
+      }
+      .chip .lbl {
+        font-size: 0.82rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      /* output list */
+      .out-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .out-head .count {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .list {
+        display: grid;
+        gap: 6px;
+      }
+      .id {
+        font-family: var(--font-mono);
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+        word-break: break-all;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        padding: 8px 12px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .id:hover {
+        border-color: var(--accent);
+      }
+      .id.copied {
+        border-color: var(--accent);
+        background: var(--accent-2);
+      }
+
+      .note {
+        font-size: 0.84rem;
+        color: var(--muted);
+        margin: 0;
+      }
+      .note + .note {
+        margin-top: 6px;
+      }
+      .note b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="uuid">
+      <div class="wrap">
+        <div class="panel">
+          <h2 class="section">Options</h2>
+          <div class="options">
+            <div class="seg" id="type" role="group" aria-label="ID type">
+              <button type="button" data-type="uuid" aria-pressed="true">
+                UUID v4
+              </button>
+              <button type="button" data-type="nano" aria-pressed="false">
+                Nano ID
+              </button>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="count">count (1–1000)</label>
+                <input
+                  id="count"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="10"
+                />
+              </div>
+            </div>
+
+            <!-- UUID-only options -->
+            <div class="row" id="uuid-opts">
+              <label class="check"
+                ><input type="checkbox" id="uppercase" /> Uppercase</label
+              >
+              <label class="check"
+                ><input type="checkbox" id="hyphens" checked /> Hyphens</label
+              >
+            </div>
+
+            <!-- Nano-only options -->
+            <div class="options hidden" id="nano-opts">
+              <div class="row">
+                <div class="field range-field">
+                  <label for="length"
+                    >length <span class="mono" id="length-val">21</span></label
+                  >
+                  <input
+                    id="length"
+                    type="range"
+                    min="2"
+                    max="64"
+                    step="1"
+                    value="21"
+                  />
+                </div>
+              </div>
+              <div
+                class="chips"
+                id="alphabets"
+                role="group"
+                aria-label="Alphabet preset"
+              ></div>
+              <div class="field">
+                <label for="alphabet">alphabet</label>
+                <input
+                  id="alphabet"
+                  class="tin mono"
+                  type="text"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn--accent" id="gen" type="button">
+                Generate
+              </button>
+              <button class="btn" id="copy-all" type="button">Copy all</button>
+              <button class="btn" id="reset" type="button">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="out-head">
+            <h2 class="section" style="margin: 0">Output</h2>
+            <span class="count" id="count-note"></span>
+          </div>
+          <div class="list" id="list"></div>
+        </div>
+
+        <div class="panel">
+          <p class="note">
+            <b>UUID v4</b> uses the browser's native
+            <code>crypto.randomUUID()</code> (122 random bits).
+            <b>Nano ID</b> draws from <code>crypto.getRandomValues</code> with
+            unbiased rejection sampling — any alphabet, any length. Everything
+            is generated locally; nothing is sent anywhere.
+          </p>
+          <p class="note">
+            Click any ID to copy it, or use <b>Copy all</b> for the whole list.
+          </p>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const STORE_KEY = "uuid-tool:opts";
+
+      // localStorage can throw under file:// or when site data is blocked — guard it
+      // so the tool still works (mirrors char-counter / shared.js).
+      const store = {
+        get: (k) => {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+      };
+
+      // Named alphabets. URL-safe is nanoid's default. Order matters only for display.
+      const ALPHABETS = [
+        [
+          "URL-safe",
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-",
+        ],
+        [
+          "Alphanumeric",
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+        ],
+        ["Hex", "0123456789abcdef"],
+        ["Numbers", "0123456789"],
+        ["Lowercase", "abcdefghijklmnopqrstuvwxyz"],
+      ];
+
+      // UUID v4 — native. crypto.randomUUID lands in all modern browsers; the
+      // getRandomValues path is a fallback for old/insecure contexts (it never
+      // requires a secure context, unlike randomUUID).
+      function uuidv4() {
+        if (crypto.randomUUID) return crypto.randomUUID();
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 0x0f) | 0x40; // version 4
+        b[8] = (b[8] & 0x3f) | 0x80; // variant 10
+        const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+      }
+
+      // Nano ID — the canonical ai/nanoid algorithm. Rejection sampling keeps every
+      // alphabet unbiased (plain byte % len skews toward low chars when len ∤ 256).
+      // Caller guarantees alphabet.length >= 2, so log2(len-1) is finite.
+      function nanoid(size, alphabet) {
+        const mask = (2 << Math.floor(Math.log2(alphabet.length - 1))) - 1;
+        const step = Math.ceil((1.6 * mask * size) / alphabet.length);
+        let id = "";
+        for (;;) {
+          const bytes = crypto.getRandomValues(new Uint8Array(step));
+          for (let i = 0; i < step; i++) {
+            const c = alphabet[bytes[i] & mask];
+            if (c !== undefined && (id += c).length === size) return id;
+          }
+        }
+      }
+
+      // --- state ---
+      let type = "uuid"; // "uuid" | "nano"
+
+      function readCount() {
+        // trust-boundary clamp: NaN/negative/huge/float → 1..1000 integer
+        const n = Math.floor(Number($("count").value));
+        return Number.isFinite(n) ? Math.min(1000, Math.max(1, n)) : 1;
+      }
+
+      // Dedupe custom alphabet chars (a repeated char skews the distribution and is
+      // never what the user means). Returns "" if fewer than 2 distinct chars.
+      function readAlphabet() {
+        return [...new Set($("alphabet").value)].join("");
+      }
+
+      function generate() {
+        const count = readCount();
+        $("count").value = count; // reflect the clamp back to the user
+        const out = [];
+        if (type === "uuid") {
+          const upper = $("uppercase").checked;
+          const hyph = $("hyphens").checked;
+          for (let i = 0; i < count; i++) {
+            let v = uuidv4();
+            if (!hyph) v = v.replace(/-/g, "");
+            if (upper) v = v.toUpperCase();
+            out.push(v);
+          }
+        } else {
+          const alphabet = readAlphabet();
+          const badAlpha = alphabet.length < 2;
+          $("alphabet").classList.toggle("invalid", badAlpha);
+          if (badAlpha) {
+            render([], "alphabet needs at least 2 distinct characters");
+            return;
+          }
+          const size = Number($("length").value);
+          for (let i = 0; i < count; i++) out.push(nanoid(size, alphabet));
+        }
+        render(out);
+        saveOpts();
+      }
+
+      // A custom Nano ID alphabet is user input, so a generated id can contain
+      // <, >, & — escape before dropping into innerHTML (copy uses textContent,
+      // which decodes back to the real characters).
+      const esc = (s) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+      let current = [];
+      function render(ids, msg) {
+        current = ids;
+        const list = $("list");
+        if (msg) {
+          list.innerHTML = `<p class="note">${msg}</p>`;
+          $("count-note").textContent = "";
+          return;
+        }
+        list.innerHTML = ids
+          .map(
+            (v) => `<div class="id" role="button" tabindex="0">${esc(v)}</div>`,
+          )
+          .join("");
+        $("count-note").textContent = `${ids.length} generated`;
+      }
+
+      // clipboard API with execCommand fallback (file:// / non-secure contexts)
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      // click / Enter / Space on a row copies just that id
+      function copyRow(el) {
+        copyText(el.textContent).then((ok) => {
+          if (!ok) return;
+          el.classList.add("copied");
+          setTimeout(() => el.classList.remove("copied"), 700);
+        });
+      }
+      $("list").addEventListener("click", (e) => {
+        const el = e.target.closest(".id");
+        if (el) copyRow(el);
+      });
+      $("list").addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const el = e.target.closest(".id");
+        if (el) {
+          e.preventDefault();
+          copyRow(el);
+        }
+      });
+
+      $("copy-all").addEventListener("click", async () => {
+        const btn = $("copy-all");
+        if (!current.length) return;
+        const ok = await copyText(current.join("\n"));
+        btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+        setTimeout(() => (btn.textContent = "Copy all"), 1200);
+      });
+
+      // Reflect the current `type` onto the toggle + which option group shows.
+      function syncType() {
+        $("type")
+          .querySelectorAll("button")
+          .forEach((x) =>
+            x.setAttribute("aria-pressed", x.dataset.type === type),
+          );
+        $("uuid-opts").classList.toggle("hidden", type !== "uuid");
+        $("nano-opts").classList.toggle("hidden", type !== "nano");
+      }
+
+      // --- options wiring ---
+      $("type").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        type = b.dataset.type;
+        syncType();
+        generate();
+      });
+
+      $("length").addEventListener("input", () => {
+        $("length-val").textContent = $("length").value;
+      });
+
+      // alphabet preset chips → fill the text field, mark active
+      $("alphabets").innerHTML = ALPHABETS.map(
+        ([name, chars]) =>
+          `<button class="chip" type="button" data-chars="${chars.replace(/"/g, "&quot;")}" aria-pressed="false"><span class="lbl">${name}</span></button>`,
+      ).join("");
+      function syncAlphaChips() {
+        const cur = $("alphabet").value;
+        $("alphabets")
+          .querySelectorAll(".chip")
+          .forEach((c) =>
+            c.setAttribute("aria-pressed", c.dataset.chars === cur),
+          );
+      }
+      $("alphabets").addEventListener("click", (e) => {
+        const b = e.target.closest(".chip");
+        if (!b) return;
+        $("alphabet").value = b.dataset.chars;
+        $("alphabet").classList.remove("invalid");
+        syncAlphaChips();
+        generate();
+      });
+      $("alphabet").addEventListener("input", syncAlphaChips);
+
+      $("gen").addEventListener("click", generate);
+
+      // persist settings only (never the random values)
+      function saveOpts() {
+        store.set(
+          STORE_KEY,
+          JSON.stringify({
+            type,
+            count: $("count").value,
+            uppercase: $("uppercase").checked,
+            hyphens: $("hyphens").checked,
+            length: $("length").value,
+            alphabet: $("alphabet").value,
+          }),
+        );
+      }
+      // Apply an options object to the UI. Empty object → every field falls back
+      // to its default, so applyOpts({}) doubles as the Reset action.
+      function applyOpts(o) {
+        type = o.type === "nano" ? "nano" : "uuid";
+        $("count").value = o.count || 10;
+        $("uppercase").checked = !!o.uppercase;
+        $("hyphens").checked = o.hyphens !== false; // default on
+        $("length").value = o.length || 21;
+        $("length-val").textContent = $("length").value;
+        $("alphabet").value = o.alphabet || ALPHABETS[0][1];
+        $("alphabet").classList.remove("invalid");
+        syncType();
+        syncAlphaChips();
+      }
+      function loadOpts() {
+        let o = {};
+        try {
+          o = JSON.parse(store.get(STORE_KEY)) || {};
+        } catch {}
+        applyOpts(o);
+      }
+
+      // Reset → restore every option to its default but KEEP the current tab.
+      // Passing only { type } means all other fields fall back to defaults:
+      // count→10, uppercase→off, hyphens→on, length→21, alphabet→URL-safe (chips
+      // resync to match). Then regenerate so the output reflects the reset state.
+      $("reset").addEventListener("click", () => {
+        applyOpts({ type });
+        generate();
+      });
+
+      loadOpts();
+      generate();
+
+      // self-check (silent unless it breaks) — guards the ID generators
+      function demo() {
+        const re =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+        const seen = new Set();
+        for (let i = 0; i < 1000; i++) {
+          const u = uuidv4();
+          console.assert(re.test(u), "uuid v4 shape", u);
+          seen.add(u);
+        }
+        console.assert(seen.size === 1000, "uuid uniqueness", seen.size);
+
+        // nanoid: exact length + every char from the alphabet, across sizes
+        for (const [, a] of ALPHABETS) {
+          const id = nanoid(24, a);
+          console.assert(id.length === 24, "nano length", a, id.length);
+          console.assert(
+            [...id].every((c) => a.includes(c)),
+            "nano charset",
+            a,
+            id,
+          );
+        }
+        // tiny edge: 2-char alphabet (mask = 1) still terminates and stays in-set
+        const bin = nanoid(50, "ab");
+        console.assert(
+          bin.length === 50 && /^[ab]+$/.test(bin),
+          "binary alphabet",
+          bin,
+        );
+        // hex alphabet (len 16, mask 15) is a clean power-of-two divisor
+        console.assert(
+          /^[0-9a-f]{40}$/.test(nanoid(40, "0123456789abcdef")),
+          "hex nano",
+        );
+      }
+      demo();
+    </script>
+  </body>
+</html>
