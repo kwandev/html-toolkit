@@ -111,8 +111,7 @@ window.TOOLS = [
     name: "Text Diff",
     href: "app/text-diff.html",
     tag: "text",
-    blurb:
-      "Compare two blocks of text line by line - any format, original formatting preserved.",
+    blurb: "Compare two blocks of text line by line - any format, original formatting preserved.",
   },
   {
     slug: "char-counter",
@@ -127,8 +126,7 @@ window.TOOLS = [
     name: "Color & Contrast",
     href: "app/color-contrast.html",
     tag: "color",
-    blurb:
-      "Convert hex / rgb / hsl / oklch and check WCAG contrast with a live preview.",
+    blurb: "Convert hex / rgb / hsl / oklch and check WCAG contrast with a live preview.",
   },
   {
     slug: "box-shadow",
@@ -144,6 +142,14 @@ window.TOOLS = [
     tag: "dev",
     blurb:
       "Generate UUID v4 and Nano IDs in bulk — pick length, alphabet and case, copy one or all. Runs entirely in your browser.",
+  },
+  {
+    slug: "hash",
+    name: "Hash Generator",
+    href: "app/hash.html",
+    tag: "dev",
+    blurb:
+      "MD5 & SHA-1/256/384/512 for text or files — live, click to copy, verify against an expected checksum. Runs entirely in your browser.",
   },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
@@ -237,9 +243,7 @@ class AppShell extends HTMLElement {
     const sw = root.querySelector(".theme-switch");
     const buttons = sw.querySelectorAll("button");
     const sync = (current = getTheme()) =>
-      buttons.forEach((b) =>
-        b.setAttribute("aria-pressed", b.dataset.mode === current),
-      );
+      buttons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === current));
     sync();
     sw.addEventListener("click", (e) => {
       const b = e.target.closest("button");
