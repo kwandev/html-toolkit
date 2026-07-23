@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML to Text — toolkit</title>
+    <meta
+      name="description"
+      content="Paste HTML — or copy straight from a web page — and get clean plain text. Tags removed, entities decoded, line breaks kept."
+    />
+
+    <!-- 파비콘, PWA, iOS 홈 화면용 아이콘 (전 페이지 공통) -->
+    <link rel="icon" href="/public/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/public/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/public/apple-touch-icon.png" />
+    <link rel="manifest" href="/public/manifest.webmanifest" />
+
+    <!-- 테마 색상: 라이트/다크 모드 대응 (전 페이지 공통) -->
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d11" media="(prefers-color-scheme: dark)" />
+
+    <!-- SEO, Open Graph, Twitter Card (도구별) -->
+    <link rel="canonical" href="https://toolkit.twentyquad.com/app/html-to-text.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toolkit" />
+    <meta property="og:title" content="HTML to Text — toolkit" />
+    <meta
+      property="og:description"
+      content="Paste HTML — or copy straight from a web page — and get clean plain text. Tags removed, entities decoded, line breaks kept."
+    />
+    <meta property="og:url" content="https://toolkit.twentyquad.com/app/html-to-text.html" />
+    <meta property="og:image" content="https://toolkit.twentyquad.com/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HTML to Text — toolkit" />
+    <meta
+      name="twitter:description"
+      content="Paste HTML — or copy straight from a web page — and get clean plain text. Tags removed, entities decoded, line breaks kept."
+    />
+    <meta name="twitter:image" content="https://toolkit.twentyquad.com/public/og.png" />
+
+    <style>
+      /* 공유 디자인 시스템 */
+      :root {
+        color-scheme: light dark;
+
+        /* palette — "precision workbench": cool paper, ink, one cobalt accent */
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-2: #eff2f5;
+        --ink: #14161a;
+        --muted: #5b626e;
+        --line: #e3e7ec;
+        --accent: oklch(0.55 0.21 264);
+        --accent-2: oklch(0.55 0.21 264 / 0.12);
+        --on-accent: #ffffff;
+
+        /* type */
+        --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+        /* shape & scale */
+        --radius: 10px;
+        --radius-sm: 7px;
+        --maxw: 1280px;
+        --pad: clamp(16px, 4vw, 32px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --bg: #0b0d11;
+          --surface: #1b2029;
+          --surface-2: #242b36;
+          --ink: #e9ebf0;
+          --muted: #9aa2b1;
+          --line: #3a4350;
+          --accent: oklch(0.72 0.17 264);
+          --accent-2: oklch(0.72 0.17 264 / 0.16);
+          --on-accent: #0d0f13;
+        }
+      }
+
+      /* explicit theme choice (set by shared.js) beats the media query above */
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d11;
+        --surface: #1b2029;
+        --surface-2: #242b36;
+        --ink: #e9ebf0;
+        --muted: #9aa2b1;
+        --line: #3a4350;
+        --accent: oklch(0.72 0.17 264);
+        --accent-2: oklch(0.72 0.17 264 / 0.16);
+        --on-accent: #0d0f13;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+      }
+
+      /* --- reusable components shared across every tool --- */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: clamp(16px, 3vw, 24px);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 560;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5ch;
+        padding: 0.6em 1.1em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.05s;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn--accent {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: transparent;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field > label {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 36px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      code,
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* free smooth page-to-page transition on supporting browsers (MPA, no JS) */
+      @view-transition {
+        navigation: auto;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+    <script src="shared.js"></script>
+    <style>
+      .wrap {
+        margin: 0 auto;
+        padding: var(--pad) 0;
+        width: 100%;
+        max-width: 920px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .io {
+        display: grid;
+        gap: 12px;
+      }
+      textarea {
+        font: inherit;
+        width: 100%;
+        min-height: 220px;
+        resize: vertical;
+        padding: 14px;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        line-height: 1.6;
+      }
+      #input {
+        font-family: var(--font-mono);
+        font-size: 0.86rem;
+      }
+      #input.drop {
+        border-color: var(--accent);
+        background: var(--accent-2);
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .bar .spacer {
+        flex: 1;
+      }
+      .meta {
+        font-family: var(--font-mono);
+        font-size: 0.76rem;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* option toggles */
+      .opts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        padding: 0 4px;
+      }
+      .opts label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55ch;
+        font-size: 0.88rem;
+        cursor: pointer;
+        user-select: none;
+      }
+      .opts input {
+        accent-color: var(--accent);
+        width: 15px;
+        height: 15px;
+        margin: 0;
+      }
+      .opts .hint {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+
+      .note {
+        font-size: 0.84rem;
+        color: var(--muted);
+        margin: 0;
+      }
+      .note + .note {
+        margin-top: 6px;
+      }
+      .note b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      /* visually hidden but focusable — the file input behind its button label */
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <app-shell tool="html-to-text">
+      <h1 slot="tool-title">HTML to Text</h1>
+      <div class="wrap">
+        <div class="io panel">
+          <div class="field">
+            <label for="input">html in</label>
+            <textarea
+              id="input"
+              placeholder="Paste HTML here — or copy text from any web page and paste it: the markup comes along automatically."
+              spellcheck="false"
+              autofocus
+            ></textarea>
+          </div>
+          <div class="bar">
+            <label class="btn" for="file">Open .html file</label>
+            <input class="sr" id="file" type="file" accept=".html,.htm,text/html" />
+            <span class="spacer"></span>
+            <button class="btn" id="clear" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="opts">
+          <label
+            ><input type="checkbox" id="o-compact" /> Compact
+            <span class="hint">no line breaks, just spaces</span></label
+          >
+          <label
+            ><input type="checkbox" id="o-dropCode" /> Drop <code>&lt;script&gt;</code>/<code
+              >&lt;style&gt;</code
+            >
+            code</label
+          >
+        </div>
+
+        <div class="io panel">
+          <div class="field">
+            <label for="output">text out</label>
+            <textarea id="output" readonly placeholder="Plain text shows up here."></textarea>
+          </div>
+          <div class="bar">
+            <span class="meta" id="stats"></span>
+            <span class="spacer"></span>
+            <button class="btn btn--accent" id="copy" type="button">Copy</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <p class="note">
+            Tags come off, text stays — including whatever sits inside
+            <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code>. Tick <b>Drop code</b> to
+            throw those away too. Parsed with the browser's own HTML parser, so broken markup is
+            repaired and entities (<code>&amp;amp;</code>, <code>&amp;#12345;</code>) are decoded.
+            The parsed document is <b>inert</b> — scripts never run and no image or font request
+            ever leaves your browser.
+          </p>
+          <p class="note">
+            태그만 걷어내고 텍스트는 모두 남깁니다 — <code>&lt;script&gt;</code>·<code
+              >&lt;style&gt;</code
+            >
+            안의 코드까지. 그것까지 버리려면 <b>Drop code</b>를 켜세요. 브라우저 HTML 파서를 그대로
+            쓰기 때문에 깨진 태그도 복구되고 엔티티도 디코딩됩니다. 파싱된 문서는
+            <b>비활성(inert)</b> — 스크립트가 실행되지 않고 이미지·폰트 요청도 밖으로 나가지
+            않습니다. <b>Compact</b>를 켜면 줄바꿈 없이 공백으로만 이어 붙인 한 줄이 됩니다.
+          </p>
+        </div>
+      </div>
+    </app-shell>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const STORE_KEY = "html-to-text:input";
+      const OPTS_KEY = "html-to-text:opts";
+
+      // localStorage can throw or be unavailable under file:// or when site data
+      // is blocked — guard it so stripping still works (mirrors shared.js).
+      const store = {
+        get: (k) => {
+          try {
+            return localStorage.getItem(k);
+          } catch {
+            return null;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+        remove: (k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        },
+      };
+
+      /* ---------- the actual stripper ---------- */
+
+      // Job one is removing tags, not deciding what counts as content — so nothing is
+      // dropped by default. Code inside <script>/<style> is still text, and it only
+      // disappears when the user asks (o.dropCode).
+      const DROP = "script,style";
+
+      // Blocks that read as paragraphs get a blank line around them; blocks that
+      // read as rows get a single line break; table cells are tab-separated so a
+      // table survives as rows and columns (and pastes into a spreadsheet).
+      const PARA = new Set(
+        (
+          "ADDRESS ARTICLE ASIDE BLOCKQUOTE DIV DL FIELDSET FIGURE FOOTER FORM " +
+          "H1 H2 H3 H4 H5 H6 HEADER HR MAIN NAV NOSCRIPT OL P PRE SCRIPT SECTION " +
+          "STYLE TABLE TITLE UL"
+        ).split(" "),
+      );
+      const LINE = new Set("DD DT FIGCAPTION LI TR".split(" "));
+      const CELL = new Set(["TD", "TH"]);
+
+      function trailingNewlines(s) {
+        let n = 0;
+        while (n < s.length && s[s.length - 1 - n] === "\n") n++;
+        return n;
+      }
+
+      function stripHtml(html, o = {}) {
+        // DOMParser documents are inert: no script runs, no resource is fetched.
+        // (element.innerHTML = html would execute <img onerror> — never use it here.)
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        if (o.dropCode) doc.querySelectorAll(DROP).forEach((el) => el.remove());
+        // Walk the whole document, not just <body>: the parser files <title> under
+        // <head>, and dropping the head would silently eat text the user pasted.
+        // Nothing else in a head carries text once script/style are gone.
+        const root = doc.documentElement;
+
+        const out = [];
+        let pendingNl = 0; // consecutive newlines already at the end of `out`
+        const push = (s) => {
+          if (!s) return;
+          const t = trailingNewlines(s);
+          pendingNl = t === s.length ? pendingNl + t : t;
+          out.push(s);
+        };
+        // Ask for `n` line breaks; only top up what isn't there yet, so a block's
+        // closing break and the next block's opening break don't stack.
+        const nl = (n) => {
+          if (n > pendingNl) push("\n".repeat(n - pendingNl));
+        };
+
+        (function walk(node) {
+          for (const n of node.childNodes) {
+            if (n.nodeType === 3) {
+              push(n.nodeValue);
+              continue;
+            }
+            if (n.nodeType !== 1) continue; // comments, doctype…
+            const tag = n.tagName;
+            if (tag === "BR") {
+              nl(1);
+              continue;
+            }
+            if (tag === "IMG") continue; // no text to keep
+            if (CELL.has(tag)) {
+              if (pendingNl === 0 && out.length) push("\t"); // between cells, not at row start
+              walk(n);
+              continue;
+            }
+            const gap = PARA.has(tag) ? 2 : LINE.has(tag) ? 1 : 0;
+            if (gap) nl(gap);
+            walk(n);
+            if (gap) nl(gap);
+          }
+        })(root);
+
+        // Always tidy: collapse runs of spaces/nbsp to one, trim each line, cap blank
+        // runs at one. Tabs are left alone — they separate table cells.
+        let text = out
+          .join("")
+          .split("\n")
+          .map((l) => l.replace(/[^\S\n\t]+/g, " ").trim())
+          .join("\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        // Compact: drop every line break (and tab) so it's one space-separated line.
+        if (o.compact) text = text.replace(/\s+/g, " ").trim();
+        return text;
+      }
+
+      /* ---------- clipboard (same fallback as other tools) ---------- */
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch {
+          /* fall through */
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+
+      /* ---------- wiring ---------- */
+      const input = $("input");
+      const output = $("output");
+      const OPT_IDS = ["compact", "dropCode"];
+      const readOpts = () => Object.fromEntries(OPT_IDS.map((k) => [k, $("o-" + k).checked]));
+      const fmt = (n) => n.toLocaleString("en-US");
+
+      function render() {
+        const src = input.value;
+        const text = stripHtml(src, readOpts());
+        output.value = text;
+        if (!src) {
+          $("stats").textContent = "";
+          return;
+        }
+        const a = [...src].length,
+          b = [...text].length;
+        const pct = Math.round((1 - b / a) * 100);
+        $("stats").textContent =
+          `${fmt(a)} → ${fmt(b)} chars · ` + (pct >= 0 ? `${pct}% smaller` : `${-pct}% larger`);
+      }
+
+      input.addEventListener("input", () => {
+        store.set(STORE_KEY, input.value);
+        render();
+      });
+
+      // Rich clipboard: copying from a web page puts the markup on the clipboard as
+      // text/html — grab that flavour so "select article → Ctrl+C → Ctrl+V" just works.
+      input.addEventListener("paste", (e) => {
+        const html = e.clipboardData?.getData("text/html");
+        if (!html) return; // plain text paste → let the browser do its thing
+        // …but an editor or terminal ALSO offers a text/html flavour, and there it's
+        // the source escaped into markup (&lt;title&gt;…). Using it would peel off a
+        // layer and print the tags back out. If the plain text already looks like
+        // markup, that IS what was pasted — take it verbatim.
+        if (/<[a-z!/][^>]*>/i.test(e.clipboardData.getData("text/plain"))) return;
+        e.preventDefault();
+        input.value = html;
+        store.set(STORE_KEY, html);
+        render();
+      });
+
+      // Drag an .html file onto the input (the browser would navigate away otherwise).
+      input.addEventListener("dragover", (e) => {
+        if (!e.dataTransfer?.types.includes("Files")) return;
+        e.preventDefault();
+        input.classList.add("drop");
+      });
+      input.addEventListener("dragleave", () => input.classList.remove("drop"));
+      input.addEventListener("drop", async (e) => {
+        const file = e.dataTransfer?.files[0];
+        input.classList.remove("drop");
+        if (!file) return;
+        e.preventDefault();
+        loadFile(file);
+      });
+
+      $("file").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) loadFile(file);
+        e.target.value = ""; // allow re-picking the same file
+      });
+
+      async function loadFile(file) {
+        input.value = await file.text();
+        store.set(STORE_KEY, input.value);
+        render();
+      }
+
+      for (const k of OPT_IDS) {
+        $("o-" + k).addEventListener("change", () => {
+          store.set(OPTS_KEY, JSON.stringify(readOpts()));
+          render();
+        });
+      }
+
+      $("clear").addEventListener("click", () => {
+        input.value = "";
+        store.remove(STORE_KEY);
+        render();
+        input.focus();
+      });
+
+      $("copy").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        const ok = await copyText(output.value);
+        btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+        setTimeout(() => (btn.textContent = "Copy"), 1200);
+      });
+
+      // restore
+      try {
+        const saved = JSON.parse(store.get(OPTS_KEY) || "{}");
+        for (const k of OPT_IDS) if (k in saved) $("o-" + k).checked = !!saved[k];
+      } catch {}
+      input.value = store.get(STORE_KEY) || "";
+      render();
+
+      // self-check (silent unless it breaks) — guards the walker and the options
+      function demo() {
+        const t = (h, o) => stripHtml(h, o);
+        const eq = (got, want, name) => console.assert(got === want, name, JSON.stringify(got));
+        eq(t("<p>a</p><p>b</p>"), "a\n\nb", "block gap");
+        eq(t("a<br>b"), "a\nb", "br");
+        eq(t("<p>x<script>alert(1)<\/script>y</p>"), "x\n\nalert(1)\n\ny", "script text kept");
+        eq(t("<style>p{color:red}</style><p>hi</p>"), "p{color:red}\n\nhi", "style text kept");
+        eq(t("<p>x<script>alert(1)<\/script>y</p>", { dropCode: 1 }), "xy", "dropCode: script");
+        eq(t("<style>p{color:red}</style><p>hi</p>", { dropCode: 1 }), "hi", "dropCode: style");
+        eq(t("<p>a &amp; b</p>"), "a & b", "entities");
+        eq(t("<p>a&nbsp;&nbsp;b</p>"), "a b", "nbsp collapsed");
+        eq(t('<a href="/x">home</a>'), "home", "anchor text only, href dropped");
+        eq(t('<img alt="logo">'), "", "img yields nothing");
+        eq(t("<ul><li>a</li><li>b</li></ul>"), "a\nb", "list rows, no bullets");
+        eq(t("<p>broken <b>tag"), "broken tag", "unclosed tags repaired");
+        eq(
+          t("<table><tr><td>a</td><td>b</td></tr><tr><td>c</td></tr></table>"),
+          "a\tb\nc",
+          "table: tabs across, newline down",
+        );
+        eq(t('<img src=x onerror="throw 1">'), "", "inert: no handler runs");
+        eq(t("<title>제목</title>\n"), "제목", "<title> lands in head — keep it anyway");
+        eq(t("<title>t</title>tail"), "t\n\ntail", "head text and body text both survive");
+        // compact: every line break becomes a single space
+        eq(t("<p>a</p><p>b</p>", { compact: 1 }), "a b", "compact: no line breaks");
+        eq(
+          t("<table><tr><td>a</td><td>b</td></tr><tr><td>c</td></tr></table>", { compact: 1 }),
+          "a b c",
+          "compact: tabs collapse too",
+        );
+      }
+      demo();
+    </script>
+  </body>
+</html>

@@ -151,6 +151,14 @@ window.TOOLS = [
     blurb:
       "MD5 & SHA-1/256/384/512 for text or files — live, click to copy, verify against an expected checksum. Runs entirely in your browser.",
   },
+  {
+    slug: "html-to-text",
+    name: "HTML to Text",
+    href: "app/html-to-text.html",
+    tag: "text",
+    blurb:
+      "Paste HTML — or copy straight from a web page — and get clean plain text. Tags removed, entities decoded, line breaks kept. Runs entirely in your browser.",
+  },
   // Add a tool: copy the block above, then create app/<slug>.html beside this file.
 ];
 
